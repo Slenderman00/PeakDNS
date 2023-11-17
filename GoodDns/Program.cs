@@ -1,4 +1,5 @@
 ﻿using System;
+using GoodDns.DNS;
 
 namespace GoodDns
 {
@@ -10,8 +11,8 @@ namespace GoodDns
             {
                 Console.WriteLine("Packet Received {0}", isTCP ? "TCP" : "UDP");
                 //write the packet as hex
-                Console.WriteLine(BitConverter.ToString(packet));
-                DnsPacket _packet = new DnsPacket();
+                Console.WriteLine(BitConverter.ToString(packet).Replace("-", " "));
+                Packet _packet = new Packet();
                 _packet.Load(packet, isTCP);
                 _packet.Print();
             });

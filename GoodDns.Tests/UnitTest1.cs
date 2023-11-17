@@ -4,6 +4,7 @@ using System.Net;
 using System.Net.Sockets;
 
 using GoodDns;
+using GoodDns.DNS;
 
 [TestFixture]
 public class Tests
@@ -15,13 +16,13 @@ public class Tests
         
     }
 
-    private DnsPacket GenerateDnsPacket() {
+    private Packet GenerateDnsPacket() {
         //generate a dns packet
-        DnsPacket packet = new DnsPacket();
-        DnsQuestion question = new DnsQuestion("google.com", DnsQuestion.QType.A, DnsQuestion.QClass.IN);
+        Packet packet = new Packet();
+        Question question = new Question("google.com", RTypes.A, RClasses.IN);
         packet.AddQuestion(question);
         packet.SetTransactionId(0x1234);
-        packet.AddFlag(DnsPacket.Flags.AA);
+        packet.flagpole.AA = true;
 
         return packet;
     }
@@ -34,16 +35,16 @@ public class Tests
         //create a server
         Server server = new Server((byte[] packet, bool isTCP) => {
             try {
-                DnsPacket _packet = new DnsPacket();
+                Packet _packet = new Packet();
                 _packet.Load(packet, isTCP);
                 _packet.Print();
 
                 Assert.That(_packet.GetTransactionId(), Is.EqualTo(0x1234));
-                Assert.That(_packet.GetFlags(), Is.EqualTo((ushort)DnsPacket.Flags.AA));
+                Assert.That(_packet.flagpole.AA, Is.EqualTo(true));
                 Assert.That(_packet.GetQuestions().Count, Is.EqualTo(1));
                 Assert.That(_packet.GetQuestions()[0].GetDomainName(), Is.EqualTo("google.com."));
-                Assert.That(_packet.GetQuestions()[0].GetQType(), Is.EqualTo((ushort)DnsQuestion.QType.A));
-                Assert.That(_packet.GetQuestions()[0].GetQClass(), Is.EqualTo((ushort)DnsQuestion.QClass.IN));
+                Assert.That(_packet.GetQuestions()[0].GetQType(), Is.EqualTo((ushort)RTypes.A));
+                Assert.That(_packet.GetQuestions()[0].GetQClass(), Is.EqualTo((ushort)RClasses.IN));
 
                 callbackCalled.Set();
             } catch(Exception e) {
@@ -57,7 +58,7 @@ public class Tests
         //create a new IPEndPoint
         IPEndPoint ip = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 54321);
 
-        DnsPacket packet = GenerateDnsPacket();
+        Packet packet = GenerateDnsPacket();
 
         //convert the packet to a byte array
         byte[] packetBytes = packet.ToBytes();
@@ -81,16 +82,16 @@ public class Tests
         //create a server
         Server server = new Server((byte[] packet, bool isTCP) => {
             try {
-                DnsPacket _packet = new DnsPacket();
+                Packet _packet = new Packet();
                 _packet.Load(packet, isTCP);
                 _packet.Print();
 
                 Assert.That(_packet.GetTransactionId(), Is.EqualTo(0x1234));
-                Assert.That(_packet.GetFlags(), Is.EqualTo((ushort)DnsPacket.Flags.AA));
+                Assert.That(_packet.flagpole.AA, Is.EqualTo(true));
                 Assert.That(_packet.GetQuestions().Count, Is.EqualTo(1));
                 Assert.That(_packet.GetQuestions()[0].GetDomainName(), Is.EqualTo("google.com."));
-                Assert.That(_packet.GetQuestions()[0].GetQType(), Is.EqualTo((ushort)DnsQuestion.QType.A));
-                Assert.That(_packet.GetQuestions()[0].GetQClass(), Is.EqualTo((ushort)DnsQuestion.QClass.IN));
+                Assert.That(_packet.GetQuestions()[0].GetQType(), Is.EqualTo((ushort)RTypes.A));
+                Assert.That(_packet.GetQuestions()[0].GetQClass(), Is.EqualTo((ushort)RClasses.IN));
 
                 callbackCalled.Set();
             } catch(Exception e) {
@@ -104,7 +105,7 @@ public class Tests
         //create a new IPEndPoint
         IPEndPoint ip = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 54321);
 
-        DnsPacket packet = GenerateDnsPacket();
+        Packet packet = GenerateDnsPacket();
 
         //convert the packet to a byte array
         byte[] packetBytes = packet.ToBytes(isTCP: true);

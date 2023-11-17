@@ -1,108 +1,22 @@
 using System.Net;
 
-namespace GoodDns {
-    public class DnsQuestion {
-        public string domainName;
-        public ushort questionType;
-        public ushort questionClass;
-
-        //add question types:
-        //A: 1
-        //AAAA: 28
-        //CNAME: 5
-        //MX: 15
-        //NS: 2
-        //PTR: 12
-        //SOA: 6
-        //SRV: 33
-        //TXT: 16
-        public enum QType : ushort {
-            A = 1,
-            AAAA = 28,
-            CNAME = 5,
-            MX = 15,
-            NS = 2,
-            PTR = 12,
-            SOA = 6,
-            SRV = 33,
-            TXT = 16
-        }
-
-        //add question classes:
-        //IN: 1
-        //CS: 2
-        //CH: 3
-        //HS: 4
-        public enum QClass : ushort {
-            IN = 1,
-            CS = 2,
-            CH = 3,
-            HS = 4
-        }
-
-        public DnsQuestion(string domainName, QType qType, QClass qClass) {
-            this.domainName = domainName;
-            this.questionType = (ushort)qType;
-            this.questionClass = (ushort)qClass;
-        }
-
-        public void Print() {
-            //print the packet
-            Console.WriteLine("Domain Name: " + domainName);
-            Console.WriteLine("Question Type: " + questionType);
-            Console.WriteLine("Question Class: " + questionClass);
-        }
-        public string GetDomainName() {
-            //get the domain name
-            return domainName;
-        }
-
-        public ushort GetQType() {
-            //get the question type
-            return questionType;
-        }
-
-        public ushort GetQClass() {
-            //get the question class
-            return questionClass;
-        }
-    }
-    public class DnsPacket {
+namespace GoodDns.DNS
+{
+    public class Packet {
         public byte[] packet;
 
         ushort transactionId;
-
-        ushort flags;
 
         ushort questionCount = 0;
 
         ushort answerCount = 0;
 
         string[]? answers;
-        DnsQuestion[]? questions;
+        Question[]? questions;
 
-        //add flags:
-        //QR: bit 15
-        //opcode: bits 14-11
-        //AA: bit 10
-        //TC: bit 9
-        //RD: bit 8
-        //RA: bit 7
-        //AD: bit 5
-        //CD: bit 4
-        //RCODE: bits 3-0
+        public Flagpole flagpole = new Flagpole();
 
-        public enum Flags : ushort {
-            QR = 1 << 15,
-            AA = 1 << 10,
-            TC = 1 << 9,
-            RD = 1 << 8,
-            RA = 1 << 7,
-            AD = 1 << 5,
-            CD = 1 << 4
-        }
-
-        public DnsPacket() {
+        public Packet() {
 
         }
 
@@ -111,10 +25,8 @@ namespace GoodDns {
             
             if(!isTCP) {
                 ParseUDP();
-                Console.WriteLine("UDP");
             } else {
                 ParseTCP();
-                Console.WriteLine("TCP");
             }
         }
 
@@ -123,7 +35,8 @@ namespace GoodDns {
             transactionId = (ushort)((packet[currentPosition] << 8) | packet[currentPosition + 1]);
             currentPosition += 2;
 
-            flags = (ushort)((packet[currentPosition] << 8) | packet[currentPosition + 1]);
+            ushort flags = (ushort)((packet[currentPosition] << 8) | packet[currentPosition + 1]);
+            flagpole.Parse(flags);
             currentPosition += 2;
 
             questionCount = (ushort)((packet[currentPosition] << 8) | packet[currentPosition + 1]);
@@ -148,7 +61,8 @@ namespace GoodDns {
             transactionId = (ushort)((packet[currentPosition] << 8) | packet[currentPosition + 1]);
             currentPosition += 2;
 
-            flags = (ushort)((packet[currentPosition] << 8) | packet[currentPosition + 1]);
+            ushort flags = (ushort)((packet[currentPosition] << 8) | packet[currentPosition + 1]);
+            flagpole.Parse(flags);
             currentPosition += 2;
 
             questionCount = (ushort)((packet[currentPosition] << 8) | packet[currentPosition + 1]);
@@ -165,7 +79,7 @@ namespace GoodDns {
 
         private void GetQuestions(ref int currentPosition) {
             //get questions and answers
-            questions = new DnsQuestion[questionCount];
+            questions = new Question[questionCount];
             for(int i = 0; i < questionCount; i++) {
                 //get domain name offset
                 string domainName = ReadDomainName(ref currentPosition);
@@ -178,7 +92,7 @@ namespace GoodDns {
                 ushort questionClass = (ushort)((packet[currentPosition] << 8) | packet[currentPosition + 1]);
                 currentPosition += 2;
 
-                questions[i] = new DnsQuestion(domainName, (DnsQuestion.QType)questionType, (DnsQuestion.QClass)questionClass);
+                questions[i] = new Question(domainName, (RTypes)questionType, (RClasses)questionClass);
             }
         }
 
@@ -235,16 +149,16 @@ namespace GoodDns {
             return domainName;
         }
 
-        public void AddQuestion(DnsQuestion question) {
+        public void AddQuestion(Question question) {
             //add a question to the packet
             questionCount++;
             //if questions is null, create a new array
             if(questions == null) {
-                questions = new DnsQuestion[questionCount];
+                questions = new Question[questionCount];
                 questions[0] = question;
             } else {
                 //create a new array with the new size
-                DnsQuestion[] newQuestions = new DnsQuestion[questionCount];
+                Question[] newQuestions = new Question[questionCount];
                 //copy the old array into the new array
                 for(int i = 0; i < questions.Length; i++) {
                     newQuestions[i] = questions[i];
@@ -254,7 +168,7 @@ namespace GoodDns {
             }
         }
 
-        public DnsQuestion[] GetQuestions() {
+        public Question[] GetQuestions() {
             //get the questions
             return questions;
         }
@@ -269,16 +183,6 @@ namespace GoodDns {
 
             answerCount++;
             //if answers is null, create a new array
-        }
-
-        public void AddFlag(Flags flag) {
-            //add a flag to the packet
-            flags |= (ushort)flag;
-        }
-
-        public ushort GetFlags() {
-            //get the flags
-            return flags;
         }
 
         public void SetTransactionId(ushort transactionId) {
@@ -304,6 +208,7 @@ namespace GoodDns {
             currentPosition += 2;
 
             //add the flags
+            ushort flags = flagpole.Generate();
             packet[currentPosition] = (byte)(flags >> 8);
             packet[currentPosition + 1] = (byte)(flags & 0xFF);
             currentPosition += 2;
@@ -350,6 +255,7 @@ namespace GoodDns {
             currentPosition += 2;
 
             //add the flags
+            ushort flags = flagpole.Generate();
             packet[currentPosition] = (byte)(flags >> 8);
             packet[currentPosition + 1] = (byte)(flags & 0xFF);
             currentPosition += 2;
@@ -388,7 +294,7 @@ namespace GoodDns {
             }
         }
 
-        private void AddQuestion(ref byte[] packet, ref int currentPosition, ref DnsQuestion question) {
+        private void AddQuestion(ref byte[] packet, ref int currentPosition, ref Question question) {
             //add a question to the packet
 
             //add the domain name
@@ -423,11 +329,15 @@ namespace GoodDns {
         public void Print() {
             //print the packet
             Console.WriteLine("Transaction ID: " + transactionId);
-            Console.WriteLine("Flags: " + flags);
+
+            //print the flags
+            flagpole.Print();
+
             Console.WriteLine("Question Count: " + questionCount);
             Console.WriteLine("Answer Count: " + answerCount);
             for(int i = 0; i < questionCount; i++) {
-                Console.WriteLine("Question: " + questions[i].domainName);
+                Console.WriteLine("Question: " + i);
+                questions[i].Print();
             }
             for(int i = 0; i < answerCount; i++) {
                 Console.WriteLine("Answer: " + answers[i]);

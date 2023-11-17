@@ -35,7 +35,6 @@ namespace GoodDns
                     {
                         assignTask(await listener.ReceiveAsync(), ct);
                     }
-                    Console.WriteLine("UDP Server Stopped");
                 }
                 catch (ObjectDisposedException e)
                 {
