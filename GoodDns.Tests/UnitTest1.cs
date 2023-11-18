@@ -19,7 +19,7 @@ public class Tests
     private Packet GenerateDnsPacket() {
         //generate a dns packet
         Packet packet = new Packet();
-        Question question = new Question("google.com", RTypes.A, RClasses.IN);
+        Question question = new Question("example.com", RTypes.A, RClasses.IN);
         packet.AddQuestion(question);
         packet.SetTransactionId(0x1234);
         packet.flagpole.AA = true;
@@ -42,7 +42,7 @@ public class Tests
                 Assert.That(_packet.GetTransactionId(), Is.EqualTo(0x1234));
                 Assert.That(_packet.flagpole.AA, Is.EqualTo(true));
                 Assert.That(_packet.GetQuestions().Count, Is.EqualTo(1));
-                Assert.That(_packet.GetQuestions()[0].GetDomainName(), Is.EqualTo("google.com."));
+                Assert.That(_packet.GetQuestions()[0].GetDomainName(), Is.EqualTo("example.com."));
                 Assert.That(_packet.GetQuestions()[0].GetQType(), Is.EqualTo((ushort)RTypes.A));
                 Assert.That(_packet.GetQuestions()[0].GetQClass(), Is.EqualTo((ushort)RClasses.IN));
 
@@ -89,7 +89,7 @@ public class Tests
                 Assert.That(_packet.GetTransactionId(), Is.EqualTo(0x1234));
                 Assert.That(_packet.flagpole.AA, Is.EqualTo(true));
                 Assert.That(_packet.GetQuestions().Count, Is.EqualTo(1));
-                Assert.That(_packet.GetQuestions()[0].GetDomainName(), Is.EqualTo("google.com."));
+                Assert.That(_packet.GetQuestions()[0].GetDomainName(), Is.EqualTo("example.com."));
                 Assert.That(_packet.GetQuestions()[0].GetQType(), Is.EqualTo((ushort)RTypes.A));
                 Assert.That(_packet.GetQuestions()[0].GetQClass(), Is.EqualTo((ushort)RClasses.IN));
 

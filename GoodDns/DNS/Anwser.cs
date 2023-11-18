@@ -1,11 +1,15 @@
 namespace GoodDns.DNS
 {
     class Answer {
-        string? domainName;
-        RTypes answerType;
-        RClasses answerClass;
-        uint ttl;
-        ushort dataLength;
-        byte[]? data;
+        public string? domainName;
+        public RTypes answerType;
+        public RClasses answerClass;
+        public uint ttl;
+        public ushort dataLength;
+        public byte[]? data;
+
+        public void Parse(byte[] anwser) {
+            
+        }
     }
 }
