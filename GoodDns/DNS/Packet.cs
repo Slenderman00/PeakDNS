@@ -8,12 +8,12 @@ namespace GoodDns.DNS
 
         ushort transactionId;
 
-        ushort questionCount = 0;
+        public ushort questionCount = 0;
 
-        ushort answerCount = 0;
+        public ushort answerCount = 0;
 
-        string[]? answers;
-        Question[]? questions;
+        public Answer[]? answers;
+        public Question[]? questions;
 
         public Flagpole flagpole = new Flagpole();
 
@@ -94,38 +94,14 @@ namespace GoodDns.DNS
 
         private void GetAnwsers(ref int currentPosition)
         {
+            //remove 2 bytes from the current position
             //get answers
-            answers = new string[answerCount];
+            answers = new Answer[answerCount];
+            Console.WriteLine("Answer Count: " + answerCount);
             for (int i = 0; i < answerCount; i++)
             {
-                //get domain name offset
-                string domainName = Utility.GetDomainName(packet, ref currentPosition);
-
-                //parse the question type
-                ushort questionType = (ushort)((packet[currentPosition] << 8) | packet[currentPosition + 1]);
-                currentPosition += 2;
-
-                //parse the question class
-                ushort questionClass = (ushort)((packet[currentPosition] << 8) | packet[currentPosition + 1]);
-                currentPosition += 2;
-
-                //parse the time to live
-                uint timeToLive = (uint)((packet[currentPosition] << 24) | (packet[currentPosition + 1] << 16) | (packet[currentPosition + 2] << 8) | packet[currentPosition + 3]);
-                currentPosition += 4;
-
-                //parse the data length
-                ushort dataLength = (ushort)((packet[currentPosition] << 8) | packet[currentPosition + 1]);
-                currentPosition += 2;
-
-                //parse the data
-                string data = "";
-                for (int j = 0; j < dataLength; j++)
-                {
-                    data += (char)packet[currentPosition];
-                    currentPosition++;
-                }
-
-                answers[i] = data;
+                answers[i] = new Answer();
+                answers[i].Parse(ref packet, ref currentPosition);
             }
         }
 
@@ -317,7 +293,8 @@ namespace GoodDns.DNS
             }
             for (int i = 0; i < answerCount; i++)
             {
-                Console.WriteLine("Answer: " + answers[i]);
+                Console.WriteLine("Answer: " + i);
+                answers[i].Print();
             }
         }
     }

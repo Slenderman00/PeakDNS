@@ -17,5 +17,18 @@ namespace GoodDns.DNS {
             currentPosition++;
             return domainName;
         }
+
+        public static byte[] GenerateDomainName(string domainName) {
+            List<byte> bytes = new List<byte>();
+            string[] domainNameParts = domainName.Split(".");
+            foreach(string domainNamePart in domainNameParts) {
+                bytes.Add((byte)domainNamePart.Length);
+                foreach(char c in domainNamePart) {
+                    bytes.Add((byte)c);
+                }
+            }
+            bytes.Add(0);
+            return bytes.ToArray();
+        }
     }
 }
