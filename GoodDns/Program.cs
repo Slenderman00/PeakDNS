@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Net;
 using GoodDns.DNS;
 using GoodDns.DNS.Server;
 
@@ -18,7 +19,7 @@ namespace GoodDns
                 Packet _packet = new Packet();
                 _packet.Load(packet, isTCP);
                 _packet.Print();
-                recordRequester.RequestRecord(_packet, new System.Net.IPEndPoint(System.Net.IPAddress.Parse("1.1.1.1"), 53), (Packet packet) =>
+                recordRequester.RequestRecord(_packet, new IPEndPoint(IPAddress.Parse("1.1.1.1"), 53), (Packet packet) =>
                 {
                     Console.WriteLine("Got response from 1.1.1.1");
                     packet.Print();
