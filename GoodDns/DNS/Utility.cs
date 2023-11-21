@@ -1,7 +1,6 @@
 namespace GoodDns.DNS {
     public static class Utility {
         public static string GetDomainName(byte[] packet, ref int currentPosition) {
-            Console.WriteLine("Current Position: " + currentPosition);
             //read the domain name
             string domainName = "";
             while (packet[currentPosition] != 0)
