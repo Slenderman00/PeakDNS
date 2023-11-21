@@ -94,12 +94,11 @@ namespace GoodDns.DNS
 
         private void GetAnwsers(ref int currentPosition)
         {
-            //remove 2 bytes from the current position
             //get answers
             answers = new Answer[answerCount];
-            Console.WriteLine("Answer Count: " + answerCount);
             for (int i = 0; i < answerCount; i++)
             {
+                Console.WriteLine("reading anwser at position: " + currentPosition);
                 answers[i] = new Answer();
                 answers[i].Parse(ref packet, ref currentPosition);
             }

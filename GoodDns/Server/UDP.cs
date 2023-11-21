@@ -11,7 +11,6 @@ namespace GoodDns
         Task? listenTask;
         Task[] ClientPool = new Task[10];
         CancellationTokenSource cts = new CancellationTokenSource();
-        bool running = false;
 
         public delegate void PacketHandlerCallback(byte[] packet, bool isTCP);
         PacketHandlerCallback callback;
@@ -25,8 +24,6 @@ namespace GoodDns
         {
             CancellationToken ct = cts.Token;
 
-            running = true;
-
             listenTask = Task.Run(async () =>
             {
                 try
@@ -36,7 +33,7 @@ namespace GoodDns
                         assignTask(await listener.ReceiveAsync(), ct);
                     }
                 }
-                catch (ObjectDisposedException e)
+                catch (ObjectDisposedException)
                 {
 
                 }
@@ -68,7 +65,6 @@ namespace GoodDns
 
         public void Stop()
         {
-            running = false;
             listener?.Close();
             cts.Cancel();
         }

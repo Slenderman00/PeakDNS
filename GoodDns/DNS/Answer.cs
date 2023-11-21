@@ -1,3 +1,5 @@
+using System.Text;
+
 namespace GoodDns.DNS
 {
     public class Answer {
@@ -6,50 +8,52 @@ namespace GoodDns.DNS
         public RClasses answerClass;
         public uint ttl;
         public ushort dataLength;
-        public byte[]? data;
+        public byte[]? rData;
 
-        public Answer(string domainName="", RTypes answerType=RTypes.A, RClasses answerClass=RClasses.IN, uint ttl=0, ushort dataLength=0, byte[] data=null) {
+        public Answer(string domainName="", RTypes answerType=RTypes.A, RClasses answerClass=RClasses.IN, uint ttl=0, ushort dataLength=0, byte[] rData=null) {
             this.domainName = domainName;
             this.answerType = answerType;
             this.answerClass = answerClass;
             this.ttl = ttl;
             this.dataLength = dataLength;
-            this.data = data;
+            this.rData = rData;
         }
 
         public void Parse(ref byte[] answer, ref int currentPosition) {
-            int domainNamePointer = (answer[currentPosition] << 8) | answer[currentPosition + 1];
+            int pointer = (answer[currentPosition] << 8) | answer[currentPosition + 1];
 
-            // Check if the current label is a compression pointer
-            if ((domainNamePointer & 0xC000) == 0xC000) {
+            bool isPointer = (pointer & 0xC000) == 0xC000;
+
+            //check if the current label is a compression pointer
+            if (isPointer) {
                 // Compression pointer found
-                int offset = domainNamePointer & 0x3FFF; // Extract offset from the pointer
-                domainNamePointer = offset; // Update domainNamePointer to the offset
+                int offset = pointer & 0x3FFF; // Extract offset from the pointer
+                Console.WriteLine("Compression Pointer Found: " + offset);
+                domainName = Utility.GetDomainName(answer, ref offset); // Get the domain name from the offset
             } else {
-                // Not a compression pointer, move currentPosition to the next label
-                currentPosition += 2;
+                // No compression pointer found
+                domainName = Utility.GetDomainName(answer, ref currentPosition);
             }
 
-            domainName = Utility.GetDomainName(answer, ref domainNamePointer);
+            currentPosition += 2;
 
-            answerType = (RTypes)((answer[domainNamePointer] << 8) | answer[domainNamePointer + 1]);
-            domainNamePointer += 2;
+            answerType = (RTypes)((answer[currentPosition] << 8) | answer[currentPosition + 1]);
+            currentPosition += 2;
 
-            answerClass = (RClasses)((answer[domainNamePointer] << 8) | answer[domainNamePointer + 1]);
-            domainNamePointer += 2;
+            answerClass = (RClasses)((answer[currentPosition] << 8) | answer[currentPosition + 1]);
+            currentPosition += 2;
 
-            ttl = (uint)((answer[domainNamePointer] << 24) | (answer[domainNamePointer + 1] << 16) | (answer[domainNamePointer + 2] << 8) | answer[domainNamePointer + 3]);
-            domainNamePointer += 4;
+            ttl = (uint)((answer[currentPosition] << 24) | (answer[currentPosition + 1] << 16) | (answer[currentPosition + 2] << 8) | answer[currentPosition + 3]);
+            currentPosition += 4;
 
-            dataLength = (ushort)((answer[domainNamePointer] << 8) | answer[domainNamePointer + 1]);
-            domainNamePointer += 2;
+            dataLength = (ushort)((answer[currentPosition] << 8) | answer[currentPosition + 1]);
+            currentPosition += 2;
 
             // Ensure that there is enough data in the array before trying to copy
-            if (domainNamePointer + dataLength <= answer.Length) {
-                data = new byte[dataLength];
+            if (currentPosition + dataLength <= answer.Length) {
+                rData = new byte[dataLength];
                 for (int i = 0; i < dataLength; i++) {
-                    data[i] = answer[domainNamePointer];
-                    domainNamePointer++;
+                    rData[i] = answer[currentPosition++];
                 }
             } else {
                 // Handle the case where there is not enough data in the array
@@ -58,6 +62,7 @@ namespace GoodDns.DNS
         }
 
 
+        //re-implement in the same way as the question class
         public byte[] Generate() {
             List<byte> bytes = new List<byte>();
             bytes.AddRange(Utility.GenerateDomainName(domainName));
@@ -65,7 +70,7 @@ namespace GoodDns.DNS
             bytes.AddRange(BitConverter.GetBytes((ushort)answerClass));
             bytes.AddRange(BitConverter.GetBytes(ttl));
             bytes.AddRange(BitConverter.GetBytes(dataLength));
-            bytes.AddRange(data);
+            bytes.AddRange(rData);
             return bytes.ToArray();
         }
 
@@ -75,7 +80,39 @@ namespace GoodDns.DNS
             Console.WriteLine("Answer Class: " + Enum.GetName(typeof(RClasses), answerClass));
             Console.WriteLine("TTL: " + ttl);
             Console.WriteLine("Data Length: " + dataLength);
-            Console.WriteLine("Data: " + data);
+            printData();
+        }
+
+        public void printData() {
+            switch (answerType) {
+                case RTypes.A:
+                    Console.WriteLine("IP Address: " + rData[0] + "." + rData[1] + "." + rData[2] + "." + rData[3]);
+                    break;
+                case RTypes.NS:
+                    Console.WriteLine("Name Server: " + Encoding.ASCII.GetString(rData));
+                    break;
+                case RTypes.CNAME:
+                    Console.WriteLine("Canonical Name: " + Encoding.ASCII.GetString(rData));
+                    break;
+                case RTypes.SOA:
+                    Console.WriteLine("Primary Name Server: " + Encoding.ASCII.GetString(rData));
+                    break;
+                case RTypes.MX:
+                    Console.WriteLine("Mail Exchange: " + Encoding.ASCII.GetString(rData));
+                    break;
+                case RTypes.TXT:
+                    Console.WriteLine("Text: " + Encoding.ASCII.GetString(rData));
+                    break;
+                case RTypes.AAAA:
+                    Console.WriteLine("IPv6 Address: " + rData[0] + "." + rData[1] + "." + rData[2] + "." + rData[3]);
+                    break;
+                case RTypes.SRV:
+                    Console.WriteLine("Service: " + Encoding.ASCII.GetString(rData));
+                    break;
+                default:
+                    Console.WriteLine("Unknown Answer Type: " + answerType);
+                    break;
+            }
         }
     }
 }

@@ -31,7 +31,7 @@ namespace GoodDns {
                             assignTask(client, ct);
                         }
                     }
-                } catch(SocketException e) {
+                } catch(SocketException) {
 
                 }
 
