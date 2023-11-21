@@ -35,7 +35,6 @@ namespace GoodDns
                 server.Stop();
                 break;
             }
-            Console.WriteLine("a key was pressed, exiting");
         }
     }
 }

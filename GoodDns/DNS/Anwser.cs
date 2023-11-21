@@ -19,7 +19,6 @@ namespace GoodDns.DNS
 
         public void Parse(ref byte[] answer, ref int currentPosition) {
             int domainNamePointer = (answer[currentPosition] << 8) | answer[currentPosition + 1];
-            Console.WriteLine("Domain Name Pointer: " + domainNamePointer);
 
             // Check if the current label is a compression pointer
             if ((domainNamePointer & 0xC000) == 0xC000) {
