@@ -13,7 +13,6 @@ namespace GoodDns.DNS {
                     break;
                 }
 
-                Console.WriteLine("Domain Name Length: " + domainNameLength);
                 currentPosition++;
                 for (int i = 0; i < domainNameLength; i++)
                 {

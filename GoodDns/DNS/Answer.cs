@@ -28,7 +28,7 @@ namespace GoodDns.DNS
             if (isPointer) {
                 // Compression pointer found
                 int offset = pointer & 0x3FFF; // Extract offset from the pointer
-                Console.WriteLine("Compression Pointer Found: " + offset);
+                //Console.WriteLine("Compression Pointer Found: " + offset);
                 domainName = Utility.GetDomainName(answer, ref offset); // Get the domain name from the offset
             } else {
                 // No compression pointer found

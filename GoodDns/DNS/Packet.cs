@@ -98,7 +98,7 @@ namespace GoodDns.DNS
             answers = new Answer[answerCount];
             for (int i = 0; i < answerCount; i++)
             {
-                Console.WriteLine("reading anwser at position: " + currentPosition);
+                //Console.WriteLine("reading anwser at position: " + currentPosition);
                 answers[i] = new Answer();
                 answers[i].Parse(ref packet, ref currentPosition);
             }
