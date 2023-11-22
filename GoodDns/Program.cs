@@ -7,21 +7,22 @@ namespace GoodDns
 {
     class Program
     {
+        static Logging<Program> logger = new Logging<Program>("./log.txt", logLevel: 5);
         static void Main(string[] args)
         {
             RecordRequester recordRequester = new RecordRequester();
 
             Server server = new Server((byte[] packet, bool isTCP) =>
             {
-                Console.WriteLine("Packet Received {0}", isTCP ? "TCP" : "UDP");
+                logger.Success("Request callback invoked");
                 //write the packet as hex
-                Console.WriteLine(BitConverter.ToString(packet).Replace("-", " "));
+                logger.Debug(BitConverter.ToString(packet).Replace("-", " "));
                 Packet _packet = new Packet();
                 _packet.Load(packet, isTCP);
                 _packet.Print();
                 recordRequester.RequestRecord(_packet, new IPEndPoint(IPAddress.Parse("1.1.1.1"), 53), (Packet packet) =>
                 {
-                    Console.WriteLine("Got response from 1.1.1.1");
+                    logger.Success("Response callback invoked");
                     packet.Print();
                 });
                 recordRequester.Update();
@@ -30,9 +31,9 @@ namespace GoodDns
 
             while (true)
             {
-                Console.WriteLine("Press any key to stop the server");
+                logger.Info("Enter 'stop' to stop the server");
                 Console.ReadLine();
-                Console.WriteLine("Stopping the server");
+                logger.Info("Stopping server");
                 server.Stop();
                 break;
             }

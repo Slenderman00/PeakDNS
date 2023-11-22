@@ -3,6 +3,7 @@ using System.Text;
 namespace GoodDns.DNS
 {
     public class Answer {
+        Logging<Answer> logger = new Logging<Answer>("./log.txt", logLevel: 5);
         public string? domainName;
         public RTypes answerType;
         public RClasses answerClass;
@@ -28,7 +29,7 @@ namespace GoodDns.DNS
             if (isPointer) {
                 // Compression pointer found
                 int offset = pointer & 0x3FFF; // Extract offset from the pointer
-                //Console.WriteLine("Compression Pointer Found: " + offset);
+                //logger.Debug("Compression Pointer Found: " + offset);
                 domainName = Utility.GetDomainName(answer, ref offset); // Get the domain name from the offset
             } else {
                 // No compression pointer found
@@ -57,7 +58,7 @@ namespace GoodDns.DNS
                 }
             } else {
                 // Handle the case where there is not enough data in the array
-                Console.WriteLine("Error: Insufficient data in the array to read.");
+                logger.Debug("Error: Insufficient data in the array to read.");
             }
         }
 
@@ -75,42 +76,43 @@ namespace GoodDns.DNS
         }
 
         public void Print() {
-            Console.WriteLine("Domain Name: " + domainName);
-            Console.WriteLine("Answer Type: " + Enum.GetName(typeof(RTypes), answerType));
-            Console.WriteLine("Answer Class: " + Enum.GetName(typeof(RClasses), answerClass));
-            Console.WriteLine("TTL: " + ttl);
-            Console.WriteLine("Data Length: " + dataLength);
+            logger.Debug("Domain Name: " + domainName);
+            logger.Debug("Answer Type: " + Enum.GetName(typeof(RTypes), answerType));
+            logger.Debug("Answer Class: " + Enum.GetName(typeof(RClasses), answerClass));
+            logger.Debug("TTL: " + ttl);
+            logger.Debug("Data Length: " + dataLength);
+
             printData();
         }
 
         public void printData() {
             switch (answerType) {
                 case RTypes.A:
-                    Console.WriteLine("IP Address: " + rData[0] + "." + rData[1] + "." + rData[2] + "." + rData[3]);
+                    logger.Debug("IP Address: " + rData[0] + "." + rData[1] + "." + rData[2] + "." + rData[3]);
                     break;
                 case RTypes.NS:
-                    Console.WriteLine("Name Server: " + Encoding.ASCII.GetString(rData));
+                    logger.Debug("Name Server: " + Utility.GetDomainNameFromBytes(rData));
                     break;
                 case RTypes.CNAME:
-                    Console.WriteLine("Canonical Name: " + Encoding.ASCII.GetString(rData));
+                    logger.Debug("Canonical Name: " + Utility.GetDomainNameFromBytes(rData));
                     break;
                 case RTypes.SOA:
-                    Console.WriteLine("Primary Name Server: " + Encoding.ASCII.GetString(rData));
+                    logger.Debug("Primary Name Server: " + Encoding.ASCII.GetString(rData));
                     break;
                 case RTypes.MX:
-                    Console.WriteLine("Mail Exchange: " + Encoding.ASCII.GetString(rData));
+                    logger.Debug("Mail Exchange: " + Utility.GetDomainNameFromBytes(rData));
                     break;
                 case RTypes.TXT:
-                    Console.WriteLine("Text: " + Encoding.ASCII.GetString(rData));
+                    logger.Debug("Text: " + Encoding.ASCII.GetString(rData));
                     break;
                 case RTypes.AAAA:
-                    Console.WriteLine("IPv6 Address: " + rData[0] + "." + rData[1] + "." + rData[2] + "." + rData[3]);
+                    logger.Debug("IPv6 Address: " + rData[0] + "." + rData[1] + "." + rData[2] + "." + rData[3]);
                     break;
                 case RTypes.SRV:
-                    Console.WriteLine("Service: " + Encoding.ASCII.GetString(rData));
+                    logger.Debug("Service: " + Utility.GetDomainNameFromBytes(rData));
                     break;
                 default:
-                    Console.WriteLine("Unknown Answer Type: " + answerType);
+                    logger.Debug("Unknown Answer Type: " + answerType);
                     break;
             }
         }

@@ -8,6 +8,7 @@ namespace GoodDns.DNS.Server
 
     class Transaction
     {
+        Logging<Transaction> logger = new Logging<Transaction>("./log.txt", logLevel: 5);
         public Packet packet;
         public IPEndPoint server;
         public DateTime lastUpdated;
@@ -27,9 +28,20 @@ namespace GoodDns.DNS.Server
             this.lastUpdated = DateTime.Now;
             this.callback = callback;
 
+            //log the transaction
+            logger.Info($"Created transaction with id {transactionId} with endpoint {server}");
+
             //create a new udp client
             this.udpClient = new UdpClient();
+
             //send the packet
+            this.packet.Print();
+            //debug log the packet bytes
+            logger.Debug(BitConverter.ToString(packet.packet).Replace("-", " "));
+            this.packet.ToBytes();
+            this.packet.Print();
+            //debug log the packet bytes
+            logger.Debug(BitConverter.ToString(packet.packet).Replace("-", " "));
             udpClient.Send(packet.packet, packet.packet.Length, server);
         }
 
@@ -39,12 +51,14 @@ namespace GoodDns.DNS.Server
             IPEndPoint responseEndPoint = null;
             byte[] responseData = udpClient.Receive(ref responseEndPoint);
             //print response data
-            Console.WriteLine(BitConverter.ToString(responseData).Replace("-", " "));
 
             //process the response data, create a new packet, etc.
             Packet responsePacket = new Packet();
     
             responsePacket.Load(responseData, false);
+
+            //log the response
+            logger.Success($"Received response with id {responsePacket.GetTransactionId()} from endpoint {responseEndPoint}");
 
             //invoke the callback with the response packet
             callback(responsePacket);

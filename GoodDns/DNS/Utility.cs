@@ -7,10 +7,10 @@ namespace GoodDns.DNS {
             {
                 int domainNameLength = packet[currentPosition];
 
-                if(domainNameLength == 0x01) {
+                /*if(domainNameLength == 0x00) {
                     currentPosition++;
                     break;
-                }
+                }*/
 
                 currentPosition++;
                 for (int i = 0; i < domainNameLength; i++)
@@ -37,5 +37,10 @@ namespace GoodDns.DNS {
             bytes.Add(0);
             return bytes.ToArray();
         }
+
+        public static string GetDomainNameFromBytes(byte[] bytes) {
+            int currentPosition = 0;
+            return Utility.GetDomainName(bytes, ref currentPosition);
+        }    
     }
 }

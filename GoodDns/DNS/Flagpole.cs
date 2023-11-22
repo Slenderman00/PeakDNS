@@ -2,6 +2,9 @@
 namespace GoodDns.DNS 
 {
     public class Flagpole {
+
+        static Logging<Flagpole> logger = new Logging<Flagpole>("./log.txt", logLevel: 5);
+
         public bool AA = false;
         public bool TC = false;
         public bool RD = false;
@@ -58,15 +61,20 @@ namespace GoodDns.DNS
         }
 
         public void Print() {
-            Console.WriteLine("AA: " + AA);
-            Console.WriteLine("TC: " + TC);
-            Console.WriteLine("RD: " + RD);
-            Console.WriteLine("RA: " + RA);
-            Console.WriteLine("AD: " + AD);
-            Console.WriteLine("CD: " + CD);
-            Console.WriteLine("QR: " + QR);
-            Console.WriteLine("Opcode: " + Enum.GetName(typeof(OPCodes), OPcode));
-            Console.WriteLine("Rcode: " + Enum.GetName(typeof(RCodes), RCode));
+            logger.Debug("AA: " + AA);
+            logger.Debug("TC: " + TC);
+            logger.Debug("RD: " + RD);
+            logger.Debug("RA: " + RA);
+            logger.Debug("AD: " + AD);
+            logger.Debug("CD: " + CD);
+            logger.Debug("QR: " + QR);
+            logger.Debug("QD: " + QD);
+            logger.Debug("AN: " + AN);
+            logger.Debug("NS: " + NS);
+            logger.Debug("AR: " + AR);
+
+            logger.Debug("Opcode: " + Enum.GetName(typeof(OPCodes), OPcode));
+            logger.Debug("Rcode: " + Enum.GetName(typeof(RCodes), RCode));
         }
     }
 }

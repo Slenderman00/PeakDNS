@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 
 namespace GoodDns {
     class TCP {
+        Logging<TCP> logger = new Logging<TCP>("./log.txt", logLevel: 5);
         TcpListener? listener;
         Task? listenTask;
         bool running = false;
@@ -19,20 +20,24 @@ namespace GoodDns {
         }
 
         public void Start() {
-            CancellationToken ct = cts.Token;
+            logger.Info("Starting TCP server");
 
+            CancellationToken ct = cts.Token;
             this.running = true;
             listener?.Start();
             listenTask = Task.Run(() => {
                 try {
                     TcpClient? client;
                     while((client = listener?.AcceptTcpClient()) != null && (running || !cts.IsCancellationRequested)) {
+                        logger.Debug("Client connected from: " + client.Client.RemoteEndPoint);
                         if(client != null) {
                             assignTask(client, ct);
                         }
                     }
                 } catch(SocketException) {
-
+                    logger.Warning("SocketException: listener was stopped");
+                } catch(ObjectDisposedException) {
+                    logger.Warning("ObjectDisposedException: listener was disposed");
                 }
 
                 Task.WaitAll(Array.FindAll(clientPool, task => task != null));
@@ -66,6 +71,7 @@ namespace GoodDns {
         }
 
         public void Stop() {
+            logger.Info("Stopping TCP server");
             running = false;
             cts.Cancel();
             listener?.Stop();

@@ -6,6 +6,8 @@ namespace GoodDns
 {
     class UDP
     {
+        Logging<UDP> logger = new Logging<UDP>("./log.txt", logLevel: 5);
+
         //Make the UdpClient nullable to get the linter to shut up
         UdpClient listener;
         Task? listenTask;
@@ -22,6 +24,8 @@ namespace GoodDns
 
         public void Start()
         {
+            logger.Info("Starting UDP server");
+
             CancellationToken ct = cts.Token;
 
             listenTask = Task.Run(async () =>
@@ -35,7 +39,7 @@ namespace GoodDns
                 }
                 catch (ObjectDisposedException)
                 {
-
+                    logger.Warning("ObjectDisposedException: listener was disposed");
                 }
 
             }, ct);
@@ -60,11 +64,13 @@ namespace GoodDns
 
         private void HandleClient(UdpReceiveResult data)
         {
+            logger.Debug("Client connected from: " + data.RemoteEndPoint);
             callback(data.Buffer, false);
         }
 
         public void Stop()
         {
+            logger.Info("Stopping UDP server");
             listener?.Close();
             cts.Cancel();
         }

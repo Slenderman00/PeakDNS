@@ -4,6 +4,8 @@ namespace GoodDns.DNS
 {
     public class Packet
     {
+        static Logging<Packet> logger = new Logging<Packet>("./log.txt", logLevel: 5);
+
         public byte[] packet;
 
         ushort transactionId;
@@ -278,22 +280,22 @@ namespace GoodDns.DNS
         public void Print()
         {
             //print the packet
-            Console.WriteLine("Transaction ID: " + transactionId);
+            logger.Debug("Transaction ID: " + transactionId);
 
             //print the flags
             flagpole.Print();
 
-            Console.WriteLine("Question Count: " + questionCount);
-            Console.WriteLine("Answer Count: " + answerCount);
-            for (int i = 0; i < questionCount; i++)
+            logger.Debug("Question Count: " + questionCount);
+            logger.Debug("Answer Count: " + answerCount);
+            for (int i = 1; i <= questionCount; i++)
             {
-                Console.WriteLine("Question: " + i);
-                questions[i].Print();
+                logger.Debug("Question: " + i);
+                questions[i-1].Print();
             }
-            for (int i = 0; i < answerCount; i++)
+            for (int i = 1; i <= answerCount; i++)
             {
-                Console.WriteLine("Answer: " + i);
-                answers[i].Print();
+                logger.Debug("Answer: " + i);
+                answers[i-1].Print();
             }
         }
     }
