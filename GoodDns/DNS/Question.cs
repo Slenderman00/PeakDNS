@@ -47,24 +47,14 @@ namespace GoodDns.DNS
             //load the domain name
             this.domainName = Utility.GetDomainName(packet, ref currentPosition);
 
-            //print bytes
-            logger.Debug(BitConverter.ToString(packet).Replace("-", " "));
-            logger.Info($"currentPosition: {currentPosition}");
-
             // Load the question type
-            //print the 2 relevant bytes
-            logger.Debug($"Type Bytes: {BitConverter.ToString(packet, currentPosition, 2).Replace("-", " ")}");
             ushort questionTypeValue = (ushort)((packet[currentPosition] << 8) | packet[currentPosition + 1]);
             this.questionType = (RTypes)questionTypeValue;
-            logger.Info($"Question Type Value: {questionTypeValue}, Enum: {Enum.GetName(typeof(RTypes), this.questionType)}");
             currentPosition += 2;
 
             // Load the question class
-            //print the 2 relevant bytes
-            logger.Debug($"Class Bytes: {BitConverter.ToString(packet, currentPosition, 2).Replace("-", " ")}");
             ushort questionClassValue = (ushort)((packet[currentPosition] << 8) | packet[currentPosition + 1]);
             this.questionClass = (RClasses)questionClassValue;
-            logger.Info($"Question Class Value: {questionClassValue}, Enum: {Enum.GetName(typeof(RClasses), this.questionClass)}");
             currentPosition += 2;
         }
 

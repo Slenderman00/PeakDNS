@@ -16,7 +16,7 @@ namespace GoodDns
             {
                 logger.Success("Request callback invoked");
                 //write the packet as hex
-                logger.Debug(BitConverter.ToString(packet).Replace("-", " "));
+                //logger.Debug(BitConverter.ToString(packet).Replace("-", " "));
                 Packet _packet = new Packet();
                 _packet.Load(packet, isTCP);
                 _packet.Print();

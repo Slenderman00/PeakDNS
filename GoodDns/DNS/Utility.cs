@@ -7,16 +7,19 @@ namespace GoodDns.DNS {
             {
                 int domainNameLength = packet[currentPosition];
 
-                /*if(domainNameLength == 0x00) {
+                if(domainNameLength == 0x01) {
+                    //domainName += (char)packet[currentPosition];
+                    //domainName += (char)packet[currentPosition + 1];
                     currentPosition++;
                     break;
-                }*/
+                }
 
                 currentPosition++;
                 for (int i = 0; i < domainNameLength; i++)
                 {
                     domainName += (char)packet[currentPosition];
-                    //Console.WriteLine((char)packet[currentPosition]);
+                    Console.WriteLine("Current character: " + (char)packet[currentPosition]);
+                    Console.WriteLine("Current position: " + currentPosition);
                     currentPosition++;
                 }
                 domainName += ".";
