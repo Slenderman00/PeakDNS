@@ -76,6 +76,9 @@ namespace GoodDns.DNS
 
             packet[currentPosition] = 0;
 
+            //this fixes the test but breaks the program
+            //currentPosition++;
+
             //add the question type
             packet[currentPosition] = (byte)((ushort)this.questionType >> 8);
             packet[currentPosition + 1] = (byte)((ushort)this.questionType & 0xFF);

@@ -20,7 +20,7 @@ public class Tests
     private Packet GenerateDnsPacket() {
         //generate a dns packet
         Packet packet = new Packet();
-        Question question = new Question("example.com", RTypes.A, RClasses.IN);
+        Question question = new Question("example.com.", RTypes.A, RClasses.IN);
         packet.AddQuestion(question);
         packet.SetTransactionId(0x1234);
         packet.flagpole.AA = true;
