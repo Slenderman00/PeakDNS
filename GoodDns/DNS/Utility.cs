@@ -18,6 +18,7 @@ namespace GoodDns.DNS {
                 for (int i = 0; i < domainNameLength; i++)
                 {
                     domainName += (char)packet[currentPosition];
+                    Console.WriteLine($"{currentPosition} : {(char)packet[currentPosition]}");
                     currentPosition++;
                 }
                 domainName += ".";
@@ -35,7 +36,7 @@ namespace GoodDns.DNS {
                     bytes.Add((byte)c);
                 }
             }
-            bytes.Add(0);
+            //bytes.Add(0);
             return bytes.ToArray();
         }
 

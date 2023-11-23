@@ -224,6 +224,34 @@ namespace GoodDns.DNS.Server
             
         }
 
+        public Answer[] getAnswers(Question question) {
+            if(!canAnwser(question)) return null;
+            List<Answer> answers = new List<Answer>();
+            foreach(Record record in records) {
+                if(record.type == question.type) {
+                    Answer answer = new Answer();
+                    answer.domainName = question.GetDomainName();
+                    answer.answerType = question.type;
+                    answer.answerClass = question._class;
+                    answer.ttl = (uint)record.ttl;
+                    answer.dataLength = (ushort)record.data.Length;
+                    answer.rData = System.Text.Encoding.ASCII.GetBytes(record.data);
+                    answers.Add(answer);
+                }
+            }
+            return answers.ToArray();
+        }
+
+        public bool canAnwser(Question question) {
+            //check if the origin matches the question
+            if(origin != question.GetDomainName()) return false;
+            //check if the question type is in the records
+            foreach(Record record in records) {
+                if(record.type == question.type) return true;
+            }
+            return false;
+        }
+
         private void parseLine(string line) {
             //if line starts with @
             if(line.StartsWith("@")) {

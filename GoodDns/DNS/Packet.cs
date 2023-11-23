@@ -200,8 +200,9 @@ namespace GoodDns.DNS
             //add the answers
             for (int i = 0; i < answerCount; i++)
             {
-                AddAnswer();
+                answers[i]?.Generate(ref packet, ref currentPosition);
             }
+
 
             byte[] shortenedPacket = new byte[currentPosition];
             for (int i = 0; i < currentPosition; i++)
@@ -251,8 +252,12 @@ namespace GoodDns.DNS
             //add the answers
             for (int i = 0; i < answerCount; i++)
             {
-                AddAnswer();
+                answers[i]?.Generate(ref packet, ref currentPosition);
             }
+
+            //add the length of the packet to the first two bytes
+            packet[0] = (byte)(currentPosition-- >> 8);
+            packet[1] = (byte)(currentPosition & 0xFF);
 
             this.packet = packet;
 

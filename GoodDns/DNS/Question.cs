@@ -5,23 +5,23 @@ namespace GoodDns.DNS
     {
         static Logging<Question> logger = new Logging<Question>("./log.txt", logLevel: 5);
         public string domainName;
-        public RTypes questionType;
-        public RClasses questionClass;
+        public RTypes type;
+        public RClasses _class;
 
         public Question(string domainName = "", RTypes RType = RTypes.A, RClasses RClass = RClasses.IN)
         {
             //create a new question
             this.domainName = domainName;
-            this.questionType = RType;
-            this.questionClass = RClass;
+            this.type = RType;
+            this._class = RClass;
         }
 
         public void Print()
         {
             //print the packet
             logger.Debug("Domain Name: " + domainName);
-            logger.Debug("Question Type: " + Enum.GetName(typeof(RTypes), questionType));
-            logger.Debug("Question Class: " + Enum.GetName(typeof(RClasses), questionClass));
+            logger.Debug("Question Type: " + Enum.GetName(typeof(RTypes), type));
+            logger.Debug("Question Class: " + Enum.GetName(typeof(RClasses), _class));
         }
         public string GetDomainName()
         {
@@ -32,13 +32,13 @@ namespace GoodDns.DNS
         public ushort GetQType()
         {
             //get the question type
-            return (ushort)questionType;
+            return (ushort)type;
         }
 
         public ushort GetQClass()
         {
             //get the question class
-            return (ushort)questionClass;
+            return (ushort)_class;
         }
 
         public void Load(ref byte[] packet, ref int currentPosition)
@@ -49,12 +49,12 @@ namespace GoodDns.DNS
 
             // Load the question type
             ushort questionTypeValue = (ushort)((packet[currentPosition] << 8) | packet[currentPosition + 1]);
-            this.questionType = (RTypes)questionTypeValue;
+            this.type = (RTypes)questionTypeValue;
             currentPosition += 2;
 
             // Load the question class
             ushort questionClassValue = (ushort)((packet[currentPosition] << 8) | packet[currentPosition + 1]);
-            this.questionClass = (RClasses)questionClassValue;
+            this._class = (RClasses)questionClassValue;
             currentPosition += 2;
         }
 
@@ -80,13 +80,13 @@ namespace GoodDns.DNS
             //currentPosition++;
 
             //add the question type
-            packet[currentPosition] = (byte)((ushort)this.questionType >> 8);
-            packet[currentPosition + 1] = (byte)((ushort)this.questionType & 0xFF);
+            packet[currentPosition] = (byte)((ushort)this.type >> 8);
+            packet[currentPosition + 1] = (byte)((ushort)this.type & 0xFF);
             currentPosition += 2;
 
             //add the question class
-            packet[currentPosition] = (byte)((ushort)this.questionClass >> 8);
-            packet[currentPosition + 1] = (byte)((ushort)this.questionClass & 0xFF);
+            packet[currentPosition] = (byte)((ushort)this._class >> 8);
+            packet[currentPosition + 1] = (byte)((ushort)this._class & 0xFF);
             currentPosition += 2;
         }
     }

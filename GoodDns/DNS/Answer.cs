@@ -64,15 +64,54 @@ namespace GoodDns.DNS
 
 
         //re-implement in the same way as the question class
-        public byte[] Generate() {
-            List<byte> bytes = new List<byte>();
-            bytes.AddRange(Utility.GenerateDomainName(domainName));
-            bytes.AddRange(BitConverter.GetBytes((ushort)answerType));
-            bytes.AddRange(BitConverter.GetBytes((ushort)answerClass));
-            bytes.AddRange(BitConverter.GetBytes(ttl));
-            bytes.AddRange(BitConverter.GetBytes(dataLength));
-            bytes.AddRange(rData);
-            return bytes.ToArray();
+        public void Generate(ref byte[] packet, ref int currentPosition) {
+            //add an answer to the packet
+            //add the domain name
+            string[] domainNameParts = this.domainName.Split('.');
+            for (int j = 0; j < domainNameParts.Length; j++) {
+                packet[currentPosition] = (byte)domainNameParts[j].Length;
+                currentPosition++;
+                for (int k = 0; k < domainNameParts[j].Length; k++) {
+                    packet[currentPosition] = (byte)domainNameParts[j][k];
+                    currentPosition++;
+                }
+            }
+
+            //packet[currentPosition] = 0;
+            currentPosition++;
+
+            //add the answer type
+            packet[currentPosition] = (byte)(((ushort)answerType) >> 8);
+            packet[currentPosition+ 1] = (byte)(((ushort)answerType) & 0xFF);
+            currentPosition += 2;
+
+            //add the answer class
+            packet[currentPosition] = (byte)(((ushort)answerClass) >> 8);
+            packet[currentPosition + 1] = (byte)(((ushort)answerClass) & 0xFF);
+            currentPosition += 2;
+
+            //add the ttl
+            packet[currentPosition] = (byte)(ttl >> 24);
+            packet[currentPosition + 1] = (byte)(ttl >> 16);
+            packet[currentPosition + 2] = (byte)(ttl >> 8);
+            packet[currentPosition + 3] = (byte)(ttl & 0xFF);
+            currentPosition += 4;
+
+
+            //add the data length
+            packet[currentPosition] = (byte)(dataLength >> 8);
+            packet[currentPosition + 1] = (byte)(dataLength & 0xFF);
+            currentPosition += 2;
+
+            //add the rData
+            for (int j = 0; j < rData.Length; j++) {
+                packet[currentPosition] = rData[j];
+                currentPosition++;
+            }
+
+            logger.Debug("Answer Generated");
+            //log the bytes
+            logger.Debug(BitConverter.ToString(packet).Replace("-", " "));
         }
 
         public void Print() {
