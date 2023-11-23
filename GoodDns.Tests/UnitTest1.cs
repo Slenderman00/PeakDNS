@@ -128,7 +128,7 @@ public class Tests
 
     [Test]
     public void TestBIND() {
-        BIND bind = new BIND("/../../../../test.zone");
-        Assert.That(bind.records.Count, Is.EqualTo(13));
+        BIND bind = new BIND("../../../test.zone");
+        Assert.That(bind.records.Count, Is.EqualTo(14));
     }
 }
