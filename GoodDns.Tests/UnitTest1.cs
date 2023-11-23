@@ -5,6 +5,7 @@ using System.Net.Sockets;
 
 using GoodDns;
 using GoodDns.DNS;
+using GoodDns.DNS.Server;
 
 [TestFixture]
 public class Tests
@@ -123,5 +124,11 @@ public class Tests
         server.Stop();
 
         Assert.IsTrue(success, "Callback was not called");
+    }
+
+    [Test]
+    public void TestBIND() {
+        BIND bind = new BIND("/../../../../test.zone");
+        Assert.That(bind.records.Count, Is.EqualTo(13));
     }
 }

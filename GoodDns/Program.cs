@@ -37,6 +37,7 @@ namespace GoodDns
                 server.Stop();
                 break;
             }
+            BIND bind = new BIND("./test.zone");
         }
     }
 }

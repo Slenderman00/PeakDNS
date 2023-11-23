@@ -64,7 +64,7 @@ namespace GoodDns
 
         private void HandleClient(UdpReceiveResult data)
         {
-            logger.Debug("Client connected from: " + data.RemoteEndPoint);
+            logger.Info("Client connected from: " + data.RemoteEndPoint);
             callback(data.Buffer, false);
         }
 

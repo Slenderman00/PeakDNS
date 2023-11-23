@@ -29,7 +29,7 @@ namespace GoodDns {
                 try {
                     TcpClient? client;
                     while((client = listener?.AcceptTcpClient()) != null && (running || !cts.IsCancellationRequested)) {
-                        logger.Debug("Client connected from: " + client.Client.RemoteEndPoint);
+                        logger.Info("Client connected from: " + client.Client.RemoteEndPoint);
                         if(client != null) {
                             assignTask(client, ct);
                         }
