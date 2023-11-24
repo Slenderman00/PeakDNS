@@ -77,6 +77,7 @@ namespace GoodDns
 
                         _packet.ToBytes(isTCP);
                         client.Send(_packet.packet);
+                        client.Close();
 
                         //re-interprete the packet
                         logger.Debug("Reinterpreting packet");

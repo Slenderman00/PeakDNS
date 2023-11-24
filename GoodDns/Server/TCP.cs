@@ -71,6 +71,8 @@ namespace GoodDns {
                 }
             } catch(System.IO.IOException e) {
                 logger.Warning($"IOException: {e.Message}");
+            } catch(ObjectDisposedException e) {
+                logger.Warning($"ObjectDisposedException: {e.Message}");
             }
         }
 

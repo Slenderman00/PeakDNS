@@ -19,6 +19,12 @@ namespace GoodDns
                 udpClient?.Send(packet, packet.Length);
             }
         }
+
+        public void Close() {
+            if(tcpClient != null) {
+                tcpClient.Close();
+            }
+        }
     }
 
     public class Server
