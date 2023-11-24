@@ -246,20 +246,41 @@ namespace GoodDns.DNS
             //add the questions
             for (int i = 0; i < questionCount; i++)
             {
+                logger.Debug("Current position question: " + currentPosition);
                 questions[i]?.Generate(ref packet, ref currentPosition);
+                logger.Debug("Current position question end: " + currentPosition);
             }
 
             //add the answers
             for (int i = 0; i < answerCount; i++)
             {
+                logger.Debug("Current position anwser: " + currentPosition);
                 answers[i]?.Generate(ref packet, ref currentPosition);
+                logger.Debug("Current position anwser end: " + currentPosition);
             }
 
-            //add the length of the packet to the first two bytes
-            packet[0] = (byte)(currentPosition-- >> 8);
-            packet[1] = (byte)(currentPosition & 0xFF);
+            //shorten the packet
+            /*byte[] shortenedPacket = new byte[currentPosition];
+            for (int i = 0; i < currentPosition; i++)
+            {
+                shortenedPacket[i] = packet[i];
+            }
+
+            this.packet = shortenedPacket;*/
+
+            //add the length to the packet and remove the first two bytes
+            ushort length = (ushort)(currentPosition);
+
+            logger.Debug("Length: " + length);
+
+            packet[0] = (byte)(length >> 8);
+            packet[1] = (byte)(length & 0xFF);
 
             this.packet = packet;
+
+            logger.Debug("Packet length: " + length);
+            //log the bytes
+            logger.Debug(BitConverter.ToString(packet).Replace("-", " "));
 
             return packet;
         }

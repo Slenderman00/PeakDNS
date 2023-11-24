@@ -2,11 +2,11 @@ using System.Net.Sockets;
 
 namespace GoodDns
 {
-    public class universalClient {
+    public class UniversalClient {
         TcpClient? tcpClient;
         UdpClient? udpClient;
 
-        public universalClient(TcpClient? tcpClient = null, UdpClient? udpClient = null) {
+        public UniversalClient(TcpClient? tcpClient = null, UdpClient? udpClient = null) {
             this.tcpClient = tcpClient;
             this.udpClient = udpClient;
         }
@@ -23,7 +23,7 @@ namespace GoodDns
 
     public class Server
     {
-        public delegate void PacketHandler(byte[] packet, bool isTCP, universalClient client);
+        public delegate void PacketHandler(byte[] packet, bool isTCP, UniversalClient client);
         PacketHandler _packetHandler;
         UDP udp;
         TCP tcp;
@@ -35,7 +35,7 @@ namespace GoodDns
             this.tcp = new TCP(54321, packetHandler);
         }
 
-        void packetHandler(byte[] packet, bool isTCP, universalClient client)
+        void packetHandler(byte[] packet, bool isTCP, UniversalClient client)
         {
             _packetHandler(packet, isTCP, client);
         }

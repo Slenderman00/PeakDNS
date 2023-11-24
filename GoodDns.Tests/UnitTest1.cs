@@ -34,7 +34,7 @@ public class Tests
         ManualResetEvent callbackCalled = new ManualResetEvent(false);
 
         //create a server
-        Server server = new Server((byte[] packet, bool isTCP) => {
+        Server server = new Server((byte[] packet, bool isTCP, UniversalClient _) => {
             try {
                 Packet _packet = new Packet();
                 _packet.Load(packet, isTCP);
@@ -81,7 +81,7 @@ public class Tests
         ManualResetEvent callbackCalled = new ManualResetEvent(false);
 
         //create a server
-        Server server = new Server((byte[] packet, bool isTCP) => {
+        Server server = new Server((byte[] packet, bool isTCP, UniversalClient _) => {
             try {
                 Packet _packet = new Packet();
                 _packet.Load(packet, isTCP);

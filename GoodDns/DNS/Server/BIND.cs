@@ -1,5 +1,6 @@
 //include regex
 using System.Text.RegularExpressions;
+using System.Text;
 
 namespace GoodDns.DNS.Server
 {
@@ -10,7 +11,7 @@ namespace GoodDns.DNS.Server
         public RClasses _class = RClasses.IN;
         public RTypes type;
         public int priority;
-        public string data;
+        public byte[] data;
 
         public RTypes getTypeByName(string name) {
             switch(name) {
@@ -54,15 +55,29 @@ namespace GoodDns.DNS.Server
             if(parts.Length == 3) {
                 ttl = int.Parse(parts[0]);
                 type = getTypeByName(parts[1]);
-                data = parts[2];
+                //make sure data is not an ip address
+                if(type == RTypes.A) {
+                    data = ParseIP(parts[2]);
+                    return;
+                }
+                
+                data = StringToBytes(parts[2]);
                 return;
             }
 
             if(parts.Length == 4 && parts[1] != "MX") {
-                name = parts[0];
+                //logger.Debug("type: " + getTypeByName(parts[2]));
+                //logger.Debug("name: " + parts[0]);
+                this.name = parts[0];
                 ttl = int.Parse(parts[1]);
                 type = getTypeByName(parts[2]);
-                data = parts[3];
+                //check if data is an ip address
+                if(type == RTypes.A) {
+                    data = ParseIP(parts[3]);
+                    return;
+                }
+
+                data = StringToBytes(parts[3]);
                 return;
             }
 
@@ -70,10 +85,35 @@ namespace GoodDns.DNS.Server
                 ttl = int.Parse(parts[0]);
                 type = getTypeByName(parts[1]);
                 priority = int.Parse(parts[2]);
-                data = parts[3];
+                data = StringToBytes(parts[3]);
                 return;
             }
 
+        }
+
+        public byte[] ParseIP(string ip) {
+            string[] parts = ip.Split('.');
+            byte[] bytes = new byte[4];
+            for(int i = 0; i < 4; i++) {
+                bytes[i] = byte.Parse(parts[i]);
+            }
+            return bytes;
+        }
+        public byte[] StringToBytes(string str) {
+            return System.Text.Encoding.ASCII.GetBytes(str);
+        }
+
+        public void Print() {
+            logger.Debug("name: " + this.name);
+            logger.Debug("ttl: " + ttl);
+            logger.Debug("class: " + _class);
+            logger.Debug("type: " + type);
+            logger.Debug("priority: " + priority);
+            //if not null
+            if(data != null) {
+                logger.Debug("data: " + Encoding.ASCII.GetString(data));
+            }
+            //logger.Debug("data: " + data);
         }
     }
 
@@ -230,12 +270,21 @@ namespace GoodDns.DNS.Server
             foreach(Record record in records) {
                 if(record.type == question.type) {
                     Answer answer = new Answer();
-                    answer.domainName = question.GetDomainName();
+                    answer.domainName = record.name;
                     answer.answerType = question.type;
                     answer.answerClass = question._class;
                     answer.ttl = (uint)record.ttl;
+
+                    //check if there is any data
+                    if(record.data == null) {
+                        answer.dataLength = 0;
+                        answer.rData = new byte[0];
+                        answers.Add(answer);
+                        continue;
+                    }
+
                     answer.dataLength = (ushort)record.data.Length;
-                    answer.rData = System.Text.Encoding.ASCII.GetBytes(record.data);
+                    answer.rData = record.data;
                     answers.Add(answer);
                 }
             }
@@ -269,6 +318,23 @@ namespace GoodDns.DNS.Server
             string[] lines = File.ReadAllLines(path);
             foreach(string line in lines) {
                 parseLine(line);
+            }
+        }
+
+        public void Print() {
+            logger.Debug("origin: " + origin);
+            logger.Debug("primaryNameserver: " + primaryNameserver);
+            logger.Debug("hostmaster: " + hostmaster);
+            logger.Debug("serial: " + serial);
+            logger.Debug("refresh: " + refresh);
+            logger.Debug("retry: " + retry);
+            logger.Debug("expire: " + expire);
+            logger.Debug("TTL: " + TTL);
+            logger.Debug("minimumTTL: " + minimumTTL);
+            int i = 1;
+            foreach(Record record in records) {
+                logger.Debug($"record: {i++}");
+                record.Print();
             }
         }
     }

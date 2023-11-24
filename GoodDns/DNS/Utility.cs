@@ -18,7 +18,7 @@ namespace GoodDns.DNS {
                 for (int i = 0; i < domainNameLength; i++)
                 {
                     domainName += (char)packet[currentPosition];
-                    Console.WriteLine($"{currentPosition} : {(char)packet[currentPosition]}");
+                    //Console.WriteLine($"{currentPosition} : {(char)packet[currentPosition]}");
                     currentPosition++;
                 }
                 domainName += ".";
@@ -31,12 +31,15 @@ namespace GoodDns.DNS {
             List<byte> bytes = new List<byte>();
             string[] domainNameParts = domainName.Split(".");
             foreach(string domainNamePart in domainNameParts) {
+                if(domainNamePart.Length == 0x00) {
+                    break;
+                }
                 bytes.Add((byte)domainNamePart.Length);
                 foreach(char c in domainNamePart) {
                     bytes.Add((byte)c);
                 }
             }
-            //bytes.Add(0);
+            //bytes.Add(0x00);
             return bytes.ToArray();
         }
 

@@ -12,7 +12,7 @@ namespace GoodDns {
         Task[] clientPool = new Task[10];
         CancellationTokenSource cts = new CancellationTokenSource();
 
-        public delegate void PacketHandlerCallback(byte[] packet, bool isTCP, universalClient client);
+        public delegate void PacketHandlerCallback(byte[] packet, bool isTCP, UniversalClient client);
         PacketHandlerCallback callback;
         public TCP(int port, PacketHandlerCallback packetHandler) {
             listener = new TcpListener(IPAddress.Any, port);
@@ -66,7 +66,7 @@ namespace GoodDns {
                     break;
                 }
 
-                callback(buffer, true, new universalClient(tcpClient: client));
+                callback(buffer, true, new UniversalClient(tcpClient: client));
             }
         }
 

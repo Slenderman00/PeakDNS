@@ -31,12 +31,15 @@ namespace GoodDns.DNS
                 int offset = pointer & 0x3FFF; // Extract offset from the pointer
                 //logger.Debug("Compression Pointer Found: " + offset);
                 domainName = Utility.GetDomainName(answer, ref offset); // Get the domain name from the offset
+                currentPosition += 2;
             } else {
+                logger.Debug("No Compression Pointer Found");
                 // No compression pointer found
                 domainName = Utility.GetDomainName(answer, ref currentPosition);
             }
 
-            currentPosition += 2;
+            //if this is one it parses my own packets wrong, if it is 2 it crashes
+            //currentPosition += 2;
 
             answerType = (RTypes)((answer[currentPosition] << 8) | answer[currentPosition + 1]);
             currentPosition += 2;
@@ -65,20 +68,21 @@ namespace GoodDns.DNS
 
         //re-implement in the same way as the question class
         public void Generate(ref byte[] packet, ref int currentPosition) {
+
             //add an answer to the packet
             //add the domain name
-            string[] domainNameParts = this.domainName.Split('.');
-            for (int j = 0; j < domainNameParts.Length; j++) {
-                packet[currentPosition] = (byte)domainNameParts[j].Length;
-                currentPosition++;
-                for (int k = 0; k < domainNameParts[j].Length; k++) {
-                    packet[currentPosition] = (byte)domainNameParts[j][k];
+            if(domainName != null) {
+                byte[] domainNameBytes = Utility.GenerateDomainName(domainName);
+                for (int j = 0; j < domainNameBytes.Length; j++) {
+                    packet[currentPosition] = domainNameBytes[j];
+                    logger.Debug($"{currentPosition} : {(char)domainNameBytes[j]}");
                     currentPosition++;
                 }
             }
 
-            //packet[currentPosition] = 0;
-            currentPosition++;
+            packet[currentPosition] = 0;
+            //what should be here?
+            currentPosition += 1;
 
             //add the answer type
             packet[currentPosition] = (byte)(((ushort)answerType) >> 8);
@@ -97,21 +101,21 @@ namespace GoodDns.DNS
             packet[currentPosition + 3] = (byte)(ttl & 0xFF);
             currentPosition += 4;
 
-
             //add the data length
             packet[currentPosition] = (byte)(dataLength >> 8);
             packet[currentPosition + 1] = (byte)(dataLength & 0xFF);
             currentPosition += 2;
 
             //add the rData
-            for (int j = 0; j < rData.Length; j++) {
+            for (int j = 0; j < dataLength; j++) {
                 packet[currentPosition] = rData[j];
+                //logger.Debug($"{currentPosition} : {(char)rData[j]}");
                 currentPosition++;
             }
 
-            logger.Debug("Answer Generated");
+            //logger.Debug("Answer Generated");
             //log the bytes
-            logger.Debug(BitConverter.ToString(packet).Replace("-", " "));
+            //logger.Debug(BitConverter.ToString(packet).Replace("-", " "));
         }
 
         public void Print() {
@@ -127,7 +131,12 @@ namespace GoodDns.DNS
         public void printData() {
             switch (answerType) {
                 case RTypes.A:
-                    logger.Debug("IP Address: " + rData[0] + "." + rData[1] + "." + rData[2] + "." + rData[3]);
+                    //check if the data length is 4
+                    if (dataLength == 4) {
+                        logger.Debug("IP Address: " + rData[0] + "." + rData[1] + "." + rData[2] + "." + rData[3]);
+                    } else {
+                        logger.Debug("Error: Invalid data length for IPv4 address.");
+                    }
                     break;
                 case RTypes.NS:
                     logger.Debug("Name Server: " + Utility.GetDomainNameFromBytes(rData));
@@ -139,7 +148,7 @@ namespace GoodDns.DNS
                     logger.Debug("Primary Name Server: " + Encoding.ASCII.GetString(rData));
                     break;
                 case RTypes.MX:
-                    logger.Debug("Mail Exchange: " + Utility.GetDomainNameFromBytes(rData));
+                    logger.Debug("Mail Exchange: " + Encoding.ASCII.GetString(rData));
                     break;
                 case RTypes.TXT:
                     logger.Debug("Text: " + Encoding.ASCII.GetString(rData));
