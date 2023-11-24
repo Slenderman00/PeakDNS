@@ -1,14 +1,17 @@
 using System.Net.Sockets;
+using System.Net;
 
 namespace GoodDns
 {
     public class UniversalClient {
         TcpClient? tcpClient;
         UdpClient? udpClient;
+        IPEndPoint? clientEndPoint;
 
-        public UniversalClient(TcpClient? tcpClient = null, UdpClient? udpClient = null) {
+        public UniversalClient(TcpClient? tcpClient = null, UdpClient? udpClient = null, IPEndPoint? clientEndPoint = null) {
             this.tcpClient = tcpClient;
             this.udpClient = udpClient;
+            this.clientEndPoint = clientEndPoint;
         }
 
         public void Send(byte[] packet) {
@@ -16,7 +19,7 @@ namespace GoodDns
                 tcpClient?.GetStream().Write(packet, 0, packet.Length);
             }
             if(udpClient != null) {
-                udpClient?.Send(packet, packet.Length);
+                udpClient?.Send(packet, packet.Length, this.clientEndPoint);
             }
         }
 

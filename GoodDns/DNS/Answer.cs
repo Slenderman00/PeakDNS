@@ -61,7 +61,7 @@ namespace GoodDns.DNS
                 }
             } else {
                 // Handle the case where there is not enough data in the array
-                logger.Debug("Error: Insufficient data in the array to read.");
+                logger.Warning("Error: Insufficient data in the array to read.");
             }
         }
 
@@ -75,7 +75,7 @@ namespace GoodDns.DNS
                 byte[] domainNameBytes = Utility.GenerateDomainName(domainName);
                 for (int j = 0; j < domainNameBytes.Length; j++) {
                     packet[currentPosition] = domainNameBytes[j];
-                    logger.Debug($"{currentPosition} : {(char)domainNameBytes[j]}");
+                    //logger.Debug($"{currentPosition} : {(char)domainNameBytes[j]}");
                     currentPosition++;
                 }
             }
@@ -135,7 +135,7 @@ namespace GoodDns.DNS
                     if (dataLength == 4) {
                         logger.Debug("IP Address: " + rData[0] + "." + rData[1] + "." + rData[2] + "." + rData[3]);
                     } else {
-                        logger.Debug("Error: Invalid data length for IPv4 address.");
+                        logger.Warning("Error: Invalid data length for IPv4 address.");
                     }
                     break;
                 case RTypes.NS:
@@ -160,7 +160,7 @@ namespace GoodDns.DNS
                     logger.Debug("Service: " + Utility.GetDomainNameFromBytes(rData));
                     break;
                 default:
-                    logger.Debug("Unknown Answer Type: " + answerType);
+                    logger.Warning("Unknown Answer Type: " + answerType);
                     break;
             }
         }

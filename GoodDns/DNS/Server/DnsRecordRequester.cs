@@ -36,6 +36,7 @@ namespace GoodDns.DNS.Server
 
             //send the packet
             this.packet.ToBytes();
+            //logger.Debug(BitConverter.ToString(this.packet.packet).Replace("-", " "));
             udpClient.Send(packet.packet, packet.packet.Length, server);
         }
 
@@ -50,6 +51,10 @@ namespace GoodDns.DNS.Server
             Packet responsePacket = new Packet();
     
             responsePacket.Load(responseData, false);
+
+            //re-Generate packet, remove this, this is only for illustrative purposes
+            responsePacket.ToBytes();
+            responsePacket.Load(responsePacket.packet, false);
 
             //log the response
             logger.Success($"Received response with id {responsePacket.GetTransactionId()} from endpoint {responseEndPoint}");

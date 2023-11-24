@@ -4,7 +4,8 @@ using System.Text;
 
 namespace GoodDns.DNS.Server
 {
-    public class Record {
+    public class Record
+    {
         Logging<Record> logger = new Logging<Record>("./log.txt", logLevel: 5);
         public string name;
         public int ttl;
@@ -13,8 +14,10 @@ namespace GoodDns.DNS.Server
         public ushort priority;
         public byte[] data;
 
-        public RTypes getTypeByName(string name) {
-            switch(name) {
+        public RTypes getTypeByName(string name)
+        {
+            switch (name)
+            {
                 case "A":
                     return RTypes.A;
                 case "AAAA":
@@ -36,43 +39,58 @@ namespace GoodDns.DNS.Server
             }
         }
 
-        public void parseLine(string line) {
+        public void parseLine(string line)
+        {
             //remove trailing and leading whitespace
             line = line.Trim();
             //remove whitespace leaving only one space between each word
             line = Regex.Replace(line, @"\s+", " ");
-            logger.Debug("line: " + line);
+            //logger.Debug("line: " + line);
+
+            //Allocate as much data as the length, this is a dumb way of doing it...
+            //data = new byte[line.Length];    
+
             //split the line into parts
             string[] parts = line.Split(' ');
-        
-            if(parts.Length < 3 || parts.Length > 4) {
+
+            if (parts.Length < 3 || parts.Length > 4)
+            {
                 logger.Error("Invalid record: " + line);
                 return;
             }
 
-            logger.Debug("parts: " + string.Join(", ", parts));
+            //logger.Debug("parts: " + string.Join(", ", parts));
 
-            if(parts.Length == 3) {
+            if (parts.Length == 3)
+            {
                 ttl = int.Parse(parts[0]);
                 type = getTypeByName(parts[1]);
                 //make sure data is not an ip address
-                if(type == RTypes.A) {
+                if (type == RTypes.A)
+                {
                     data = ParseIP(parts[2]);
                     return;
+                }
+
+                if (type == RTypes.MX)
+                {
+                    logger.Debug("three bytes MX");
                 }
 
                 data = StringToBytes(parts[2]);
                 return;
             }
 
-            if(parts.Length == 4 && parts[1] != "MX") {
+            if (parts.Length == 4 && getTypeByName(parts[1]) != RTypes.MX)
+            {
                 //logger.Debug("type: " + getTypeByName(parts[2]));
                 //logger.Debug("name: " + parts[0]);
                 this.name = parts[0];
                 ttl = int.Parse(parts[1]);
                 type = getTypeByName(parts[2]);
                 //check if data is an ip address
-                if(type == RTypes.A) {
+                if (type == RTypes.A)
+                {
                     data = ParseIP(parts[3]);
                     return;
                 }
@@ -81,36 +99,72 @@ namespace GoodDns.DNS.Server
                 return;
             }
 
-            if(parts.Length == 4 && parts[1] == "MX") {
+            if (parts.Length == 4 && getTypeByName(parts[1]) == RTypes.MX)
+            {
                 ttl = int.Parse(parts[0]);
                 type = getTypeByName(parts[1]);
-                priority = ushort.Parse(parts[2]);
-                data = Utility.GenerateDomainName(parts[3]);
+                //priority = ushort.Parse(parts[2]);
+                //try
+                //{
+                //logger.Debug("Writing MX Record");
+                //logger.Debug(parts[3]);
+                //logger.Debug(parts[2]);
+
+                data = new byte[parts[3].Length + 2];
+
+                //parts 2 must be an ushort
+                ushort priority = ushort.Parse(parts[2]);
+                //The application crashes here vvvvv
+                data[0] = (byte)(priority >> 8);
+                //logger.Debug($"Priority 0: {(ushort)data[0]}");
+                data[1] = (byte)(priority & 0xFF);
+                //logger.Debug($"Priority 1: {(ushort)data[0]}");
+                //the rest of the data must be the exchange name
+                byte[] domainName = Utility.GenerateDomainName(parts[3]);
+                //parts[3] = parts[3].Remove(parts[3].Length - 1);
+                //byte[] domainName = StringToBytes(parts[3]);
+                for (int i = 0; i < domainName.Length; i++)
+                {
+                    data[2 + i] = domainName[i];
+                    //logger.Debug($"DomainName: {domainName[i].ToString()}");
+                }
+                
+
+                /*}
+                catch (NullReferenceException e)
+                {
+                    logger.Error($"NullReferenceException: {e.Message}");
+                }*/
                 return;
             }
-
         }
 
-        public byte[] ParseIP(string ip) {
+        public byte[] ParseIP(string ip)
+        {
             string[] parts = ip.Split('.');
             byte[] bytes = new byte[4];
-            for(int i = 0; i < 4; i++) {
+            for (int i = 0; i < 4; i++)
+            {
                 bytes[i] = byte.Parse(parts[i]);
             }
             return bytes;
         }
-        public byte[] StringToBytes(string str) {
+        public byte[] StringToBytes(string str)
+        {
             return System.Text.Encoding.ASCII.GetBytes(str);
+            //return new byte[0];
         }
 
-        public void Print() {
+        public void Print()
+        {
             logger.Debug("name: " + this.name);
             logger.Debug("ttl: " + ttl);
             logger.Debug("class: " + _class);
             logger.Debug("type: " + type);
             logger.Debug("priority: " + priority);
             //if not null
-            if(data != null) {
+            if (data != null)
+            {
                 logger.Debug("data: " + Encoding.ASCII.GetString(data));
             }
             //logger.Debug("data: " + data);
@@ -147,7 +201,8 @@ namespace GoodDns.DNS.Server
     www                   43200 CNAME example.com.
     */
 
-    public class BIND {
+    public class BIND
+    {
         Logging<BIND> logger = new Logging<BIND>("./log.txt", logLevel: 5);
 
         public string? origin = null;
@@ -160,15 +215,19 @@ namespace GoodDns.DNS.Server
         public int? TTL = null;
         public int? minimumTTL = null;
         public List<Record> records;
-        
+
         bool parsingSOA = false;
 
-        private void parseRecord(string line) {
+        private void parseRecord(string line)
+        {
             string[] parts = line.Split(' ');
             //if line starts with $ORIGIN
-            if (parts[0] == "$ORIGIN") {
+            if (parts[0] == "$ORIGIN")
+            {
                 origin = parts[1];
-            } else {
+            }
+            else
+            {
                 Record record = new Record();
                 record.parseLine(line);
                 records.Add(record);
@@ -186,7 +245,8 @@ namespace GoodDns.DNS.Server
 
         */
 
-        private void parseSOA(string line) {
+        private void parseSOA(string line)
+        {
             //remove )
             line = line.Replace("(", "");
             //remove whitespace leaving only one space between each word
@@ -201,74 +261,85 @@ namespace GoodDns.DNS.Server
             //logger.Debug("line: " + line);
             //logger.Debug("parts: " + string.Join(", ", parts));
             //check if ttl is set
-            if(TTL == null) {
+            if (TTL == null)
+            {
                 TTL = Int32.Parse(parts[0]);
                 primaryNameserver = parts[2];
-                logger.Debug("TTL: " + TTL);
-                logger.Debug("primaryNameserver: " + primaryNameserver);
+                //logger.Debug("TTL: " + TTL);
+                //logger.Debug("primaryNameserver: " + primaryNameserver);
                 return;
             }
             //check if array is empty
-            if(parts.Length == 0) return;
+            if (parts.Length == 0) return;
             //check if hostmaster is set
-            if(hostmaster == null) {
+            if (hostmaster == null)
+            {
                 hostmaster = parts[0];
                 //strip these parts from the parts array
                 parts = parts.Skip(1).ToArray();
-                logger.Debug("hostmaster: " + hostmaster);
+                //logger.Debug("hostmaster: " + hostmaster);
             }
-            if(parts.Length == 0) return;
+            if (parts.Length == 0) return;
             //check if serial
-            if(serial == null) {
+            if (serial == null)
+            {
                 serial = parts[0];
                 //remove this data from the parts array
                 parts = parts.Skip(1).ToArray();
-                logger.Debug("serial: " + serial);
+                //logger.Debug("serial: " + serial);
             }
-            if(parts.Length == 0) return;
+            if (parts.Length == 0) return;
             //check if refresh is set
-            if(refresh == null) {
+            if (refresh == null)
+            {
                 refresh = parts[0];
                 //remove this data from the parts array
                 parts = parts.Skip(1).ToArray();
-                logger.Debug("refresh: " + refresh);
+                //logger.Debug("refresh: " + refresh);
             }
-            if(parts.Length == 0) return;
+            if (parts.Length == 0) return;
             //check if retry is set
-            if(retry == null) {
+            if (retry == null)
+            {
                 retry = parts[0];
                 //remove this data from the parts array
                 parts = parts.Skip(1).ToArray();
-                logger.Debug("retry: " + retry);
+                //logger.Debug("retry: " + retry);
             }
-            if(parts.Length == 0) return;
+            if (parts.Length == 0) return;
             //check if expire is set
-            if(expire == null) {
+            if (expire == null)
+            {
                 expire = parts[0];
                 //remove this data from the parts array
                 parts = parts.Skip(1).ToArray();
-                logger.Debug("expire: " + expire);
+                //logger.Debug("expire: " + expire);
             }
-            if(parts.Length == 0) return;
+            if (parts.Length == 0) return;
             //check if minimumTTL is set
-            if(minimumTTL == null) {
+            if (minimumTTL == null)
+            {
                 minimumTTL = Int32.Parse(parts[0]);
                 //remove this data from the parts array
                 parts = parts.Skip(1).ToArray();
-                logger.Debug("minimumTTL: " + minimumTTL);
+                //logger.Debug("minimumTTL: " + minimumTTL);
             }
-            if(parts.Length == 0) return;
-            if(line.Contains(')')) {
+            if (parts.Length == 0) return;
+            if (line.Contains(')'))
+            {
                 parsingSOA = false;
             }
-            
+
         }
 
-        public Answer[] getAnswers(Question question) {
-            if(!canAnwser(question)) return null;
+        public Answer[] getAnswers(Question question)
+        {
+            if (!canAnwser(question)) return null;
             List<Answer> answers = new List<Answer>();
-            foreach(Record record in records) {
-                if(record.type == question.type) {
+            foreach (Record record in records)
+            {
+                if (record.type == question.type)
+                {
                     Answer answer = new Answer();
                     answer.domainName = record.name;
                     answer.answerType = question.type;
@@ -276,7 +347,8 @@ namespace GoodDns.DNS.Server
                     answer.ttl = (uint)record.ttl;
 
                     //check if there is any data
-                    if(record.data == null) {
+                    if (record.data == null)
+                    {
                         answer.dataLength = 0;
                         answer.rData = new byte[0];
                         answers.Add(answer);
@@ -291,37 +363,47 @@ namespace GoodDns.DNS.Server
             return answers.ToArray();
         }
 
-        public bool canAnwser(Question question) {
+        public bool canAnwser(Question question)
+        {
             //check if the origin matches the question
-            if(origin != question.GetDomainName()) return false;
+            if (origin != question.GetDomainName()) return false;
             //check if the question type is in the records
-            foreach(Record record in records) {
-                if(record.type == question.type) return true;
+            foreach (Record record in records)
+            {
+                if (record.type == question.type) return true;
             }
             return false;
         }
 
-        private void parseLine(string line) {
+        private void parseLine(string line)
+        {
             //if line starts with @
-            if(line.StartsWith("@")) {
+            if (line.StartsWith("@"))
+            {
                 parsingSOA = true;
             }
-            if(!parsingSOA) {
+            if (!parsingSOA)
+            {
                 parseRecord(line);
-            } else {
+            }
+            else
+            {
                 parseSOA(line);
             }
         }
 
-        public BIND(string path) {
+        public BIND(string path)
+        {
             records = new List<Record>();
             string[] lines = File.ReadAllLines(path);
-            foreach(string line in lines) {
+            foreach (string line in lines)
+            {
                 parseLine(line);
             }
         }
 
-        public void Print() {
+        public void Print()
+        {
             logger.Debug("origin: " + origin);
             logger.Debug("primaryNameserver: " + primaryNameserver);
             logger.Debug("hostmaster: " + hostmaster);
@@ -332,7 +414,8 @@ namespace GoodDns.DNS.Server
             logger.Debug("TTL: " + TTL);
             logger.Debug("minimumTTL: " + minimumTTL);
             int i = 1;
-            foreach(Record record in records) {
+            foreach (Record record in records)
+            {
                 logger.Debug($"record: {i++}");
                 record.Print();
             }

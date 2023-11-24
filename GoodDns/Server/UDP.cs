@@ -65,7 +65,8 @@ namespace GoodDns
         private void HandleClient(UdpReceiveResult data)
         {
             logger.Info("Client connected from: " + data.RemoteEndPoint);
-            callback(data.Buffer, false, new UniversalClient(udpClient: listener, tcpClient: null));
+            //create a new udp socket for use by the UniversalClient
+            callback(data.Buffer, false, new UniversalClient(clientEndPoint: data.RemoteEndPoint, udpClient: listener, tcpClient: null));
         }
 
         public void Stop()
