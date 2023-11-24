@@ -10,7 +10,7 @@ namespace GoodDns.DNS.Server
         public int ttl;
         public RClasses _class = RClasses.IN;
         public RTypes type;
-        public int priority;
+        public ushort priority;
         public byte[] data;
 
         public RTypes getTypeByName(string name) {
@@ -60,7 +60,7 @@ namespace GoodDns.DNS.Server
                     data = ParseIP(parts[2]);
                     return;
                 }
-                
+
                 data = StringToBytes(parts[2]);
                 return;
             }
@@ -84,8 +84,8 @@ namespace GoodDns.DNS.Server
             if(parts.Length == 4 && parts[1] == "MX") {
                 ttl = int.Parse(parts[0]);
                 type = getTypeByName(parts[1]);
-                priority = int.Parse(parts[2]);
-                data = StringToBytes(parts[3]);
+                priority = ushort.Parse(parts[2]);
+                data = Utility.GenerateDomainName(parts[3]);
                 return;
             }
 
