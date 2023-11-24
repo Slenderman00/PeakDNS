@@ -60,13 +60,17 @@ namespace GoodDns {
             NetworkStream? stream = client.GetStream();
             byte[]? buffer = new byte[1024];
             int bytesRead;
-            while ((bytesRead = stream.Read(buffer, 0, buffer.Length)) > 0)
-            {
-                if (ct.IsCancellationRequested) {
-                    break;
-                }
+            try {
+                while ((bytesRead = stream.Read(buffer, 0, buffer.Length)) > 0)
+                {
+                    if (ct.IsCancellationRequested) {
+                        break;
+                    }
 
-                callback(buffer, true, new UniversalClient(tcpClient: client));
+                    callback(buffer, true, new UniversalClient(tcpClient: client));
+                }
+            } catch(System.IO.IOException e) {
+                logger.Warning($"IOException: {e.Message}");
             }
         }
 
