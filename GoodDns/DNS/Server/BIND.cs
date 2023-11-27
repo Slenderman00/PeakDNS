@@ -78,6 +78,11 @@ namespace GoodDns.DNS.Server
                 }
 
                 data = StringToBytes(parts[2]);
+                logger.Debug("--------------------");
+                this.Print();
+                //log all parts in the parts array
+                logger.Debug("parts: " + string.Join(", ", parts));
+                logger.Debug("--------------------");
                 return;
             }
 
@@ -96,6 +101,11 @@ namespace GoodDns.DNS.Server
                 }
 
                 data = StringToBytes(parts[3]);
+                logger.Debug("--------------------");
+                this.Print();
+                //log all parts in the parts array
+                logger.Debug("parts: " + string.Join(", ", parts));
+                logger.Debug("--------------------");
                 return;
             }
 
@@ -103,21 +113,18 @@ namespace GoodDns.DNS.Server
             {
                 ttl = int.Parse(parts[0]);
                 type = getTypeByName(parts[1]);
-                //priority = ushort.Parse(parts[2]);
-                //try
-                //{
-                //logger.Debug("Writing MX Record");
-                //logger.Debug(parts[3]);
-                //logger.Debug(parts[2]);
+                //this.name = "example.com";
 
-                data = new byte[parts[3].Length + 2];
+                //relative domain name
+                data = new byte[parts[3].Length + 3];
 
                 //parts 2 must be an ushort
                 ushort priority = ushort.Parse(parts[2]);
-                //The application crashes here vvvvv
+                this.priority = priority;
+
                 data[0] = (byte)(priority >> 8);
-                //logger.Debug($"Priority 0: {(ushort)data[0]}");
                 data[1] = (byte)(priority & 0xFF);
+
                 //logger.Debug($"Priority 1: {(ushort)data[0]}");
                 //the rest of the data must be the exchange name
                 byte[] domainName = Utility.GenerateDomainName(parts[3]);
@@ -125,16 +132,15 @@ namespace GoodDns.DNS.Server
                 //byte[] domainName = StringToBytes(parts[3]);
                 for (int i = 0; i < domainName.Length; i++)
                 {
-                    data[2 + i] = domainName[i];
-                    //logger.Debug($"DomainName: {domainName[i].ToString()}");
+                    logger.Debug($"domainName[{i}]: {domainName[i]}");
+                    data[i + 2] = domainName[i];
                 }
-                
+                logger.Debug("--------------------");
+                this.Print();
+                //log all parts in the parts array
+                logger.Debug("parts: " + string.Join(", ", parts));
+                logger.Debug("--------------------");
 
-                /*}
-                catch (NullReferenceException e)
-                {
-                    logger.Error($"NullReferenceException: {e.Message}");
-                }*/
                 return;
             }
         }
@@ -165,9 +171,9 @@ namespace GoodDns.DNS.Server
             //if not null
             if (data != null)
             {
-                logger.Debug("data: " + Encoding.ASCII.GetString(data));
+                //print data as hex
+                logger.Debug("data: " + BitConverter.ToString(data).Replace("-", " "));
             }
-            //logger.Debug("data: " + data);
         }
     }
 
@@ -342,9 +348,9 @@ namespace GoodDns.DNS.Server
                 {
                     Answer answer = new Answer();
                     answer.domainName = record.name;
-                    answer.answerType = question.type;
-                    answer.answerClass = question._class;
-                    answer.ttl = (uint)record.ttl;
+                    answer.answerType = record.type;
+                    answer.answerClass = record._class;
+                    answer.ttl = record.ttl;
 
                     //check if there is any data
                     if (record.data == null)
@@ -355,7 +361,7 @@ namespace GoodDns.DNS.Server
                         continue;
                     }
 
-                    answer.dataLength = (ushort)record.data.Length;
+                    answer.dataLength = (uint)record.data.Length;
                     answer.rData = record.data;
                     answers.Add(answer);
                 }

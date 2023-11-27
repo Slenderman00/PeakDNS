@@ -323,6 +323,8 @@ namespace GoodDns.DNS
                 logger.Debug("Answer: " + i);
                 answers[i-1].Print();
             }
+            //debug log the packet bytes
+            logger.Debug(BitConverter.ToString(packet).Replace("-", " "));
         }
     }
 }

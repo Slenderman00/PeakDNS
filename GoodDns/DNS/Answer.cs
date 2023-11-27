@@ -7,11 +7,11 @@ namespace GoodDns.DNS
         public string? domainName;
         public RTypes answerType;
         public RClasses answerClass;
-        public uint ttl;
-        public ushort dataLength;
+        public int ttl;
+        public uint dataLength;
         public byte[]? rData;
 
-        public Answer(string domainName="", RTypes answerType=RTypes.A, RClasses answerClass=RClasses.IN, uint ttl=0, ushort dataLength=0, byte[] rData=null) {
+        public Answer(string domainName="", RTypes answerType=RTypes.A, RClasses answerClass=RClasses.IN, int ttl=0, ushort dataLength=0, byte[] rData=null) {
             this.domainName = domainName;
             this.answerType = answerType;
             this.answerClass = answerClass;
@@ -47,7 +47,7 @@ namespace GoodDns.DNS
             answerClass = (RClasses)((answer[currentPosition] << 8) | answer[currentPosition + 1]);
             currentPosition += 2;
 
-            ttl = (uint)((answer[currentPosition] << 24) | (answer[currentPosition + 1] << 16) | (answer[currentPosition + 2] << 8) | answer[currentPosition + 3]);
+            ttl = (int)((answer[currentPosition] << 24) | (answer[currentPosition + 1] << 16) | (answer[currentPosition + 2] << 8) | answer[currentPosition + 3]);
             currentPosition += 4;
 
             dataLength = (ushort)((answer[currentPosition] << 8) | answer[currentPosition + 1]);
@@ -69,16 +69,18 @@ namespace GoodDns.DNS
         //re-implement in the same way as the question class
         public void Generate(ref byte[] packet, ref int currentPosition) {
 
-            //add an answer to the packet
-            //add the domain name
-            if(domainName != null) {
-                byte[] domainNameBytes = Utility.GenerateDomainName(domainName);
-                for (int j = 0; j < domainNameBytes.Length; j++) {
-                    packet[currentPosition] = domainNameBytes[j];
-                    //logger.Debug($"{currentPosition} : {(char)domainNameBytes[j]}");
-                    currentPosition++;
+            if(answerType != RTypes.MX) {
+                //add an answer to the packet
+                //add the domain name
+                if(domainName != null) {
+                    byte[] domainNameBytes = Utility.GenerateDomainName(domainName);
+                    for (int j = 0; j < domainNameBytes.Length; j++) {
+                        packet[currentPosition] = domainNameBytes[j];
+                        //logger.Debug($"{currentPosition} : {(char)domainNameBytes[j]}");
+                        currentPosition++;
+                    }
                 }
-            }
+            };
 
             packet[currentPosition] = 0;
             //what should be here?
@@ -148,13 +150,24 @@ namespace GoodDns.DNS
                     logger.Debug("Primary Name Server: " + Encoding.ASCII.GetString(rData));
                     break;
                 case RTypes.MX:
-                    logger.Debug("Mail Exchange: " + Encoding.ASCII.GetString(rData));
+                    //to first ushorts are the priority
+                    //the rest is the domain name
+                    int priority = (rData[0] << 8) | rData[1];
+                    string domainName = Encoding.ASCII.GetString(rData[2..]);
+                    logger.Debug($"Mail Exchange: {domainName} (Priority: {priority})");
                     break;
                 case RTypes.TXT:
                     logger.Debug("Text: " + Encoding.ASCII.GetString(rData));
                     break;
                 case RTypes.AAAA:
-                    logger.Debug("IPv6 Address: " + rData[0] + "." + rData[1] + "." + rData[2] + "." + rData[3]);
+                    string ipv6 = "";
+                    for (int i = 0; i < rData.Length; i += 2) {
+                        ipv6 += rData[i].ToString("X2") + rData[i + 1].ToString("X2");
+                        if (i != rData.Length - 2) {
+                            ipv6 += ":";
+                        }
+                    }
+                    logger.Debug("IPv6 Address: " + ipv6);
                     break;
                 case RTypes.SRV:
                     logger.Debug("Service: " + Utility.GetDomainNameFromBytes(rData));
