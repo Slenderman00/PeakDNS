@@ -27,19 +27,15 @@ namespace GoodDns.DNS
 
             //check if the current label is a compression pointer
             if (isPointer) {
-                // Compression pointer found
-                int offset = pointer & 0x3FFF; // Extract offset from the pointer
-                //logger.Debug("Compression Pointer Found: " + offset);
-                domainName = Utility.GetDomainName(answer, ref offset); // Get the domain name from the offset
+                //compression pointer found
+                int offset = pointer & 0x3FFF; //extract offset from the pointer
+                domainName = Utility.GetDomainName(answer, ref offset); //get the domain name from the offset
                 currentPosition += 2;
             } else {
                 logger.Debug("No Compression Pointer Found");
-                // No compression pointer found
+                //no compression pointer found
                 domainName = Utility.GetDomainName(answer, ref currentPosition);
             }
-
-            //if this is one it parses my own packets wrong, if it is 2 it crashes
-            //currentPosition += 2;
 
             answerType = (RTypes)((answer[currentPosition] << 8) | answer[currentPosition + 1]);
             currentPosition += 2;
@@ -53,20 +49,18 @@ namespace GoodDns.DNS
             dataLength = (ushort)((answer[currentPosition] << 8) | answer[currentPosition + 1]);
             currentPosition += 2;
 
-            // Ensure that there is enough data in the array before trying to copy
+            //ensure that there is enough data in the array before trying to copy
             if (currentPosition + dataLength <= answer.Length) {
                 rData = new byte[dataLength];
                 for (int i = 0; i < dataLength; i++) {
                     rData[i] = answer[currentPosition++];
                 }
             } else {
-                // Handle the case where there is not enough data in the array
+                //handle the case where there is not enough data in the array
                 logger.Warning("Error: Insufficient data in the array to read.");
             }
         }
 
-
-        //re-implement in the same way as the question class
         public void Generate(ref byte[] packet, ref int currentPosition) {
 
             if(answerType != RTypes.MX) {
@@ -76,14 +70,12 @@ namespace GoodDns.DNS
                     byte[] domainNameBytes = Utility.GenerateDomainName(domainName);
                     for (int j = 0; j < domainNameBytes.Length; j++) {
                         packet[currentPosition] = domainNameBytes[j];
-                        //logger.Debug($"{currentPosition} : {(char)domainNameBytes[j]}");
                         currentPosition++;
                     }
                 }
             };
 
             packet[currentPosition] = 0;
-            //what should be here?
             currentPosition += 1;
 
             //add the answer type
@@ -111,13 +103,8 @@ namespace GoodDns.DNS
             //add the rData
             for (int j = 0; j < dataLength; j++) {
                 packet[currentPosition] = rData[j];
-                //logger.Debug($"{currentPosition} : {(char)rData[j]}");
                 currentPosition++;
             }
-
-            //logger.Debug("Answer Generated");
-            //log the bytes
-            //logger.Debug(BitConverter.ToString(packet).Replace("-", " "));
         }
 
         public void Print() {

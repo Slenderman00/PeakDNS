@@ -33,37 +33,10 @@ namespace GoodDns
 
             Init();
 
-            /*Packet testPacket = new Packet();
-            Question testQuestion = new Question("google.com");
-            testPacket.AddQuestion(testQuestion);
-            testPacket.questionCount = 1;
-            testPacket.flagpole.QR = false;
-            testPacket.flagpole.AA = true;
-            testPacket.flagpole.RA = false;
-            testPacket.flagpole.RD = false;
-            testPacket.flagpole.TC = false;
-            testPacket.flagpole.NS = false;
-            testPacket.flagpole.AD = false;
-            testPacket.flagpole.CD = false;
-            testPacket.SetTransactionId(0x1234);
-
-            logger.Debug("Response packet");
-            //testPacket.Print();
-
-            recordRequester.RequestRecord(testPacket, new IPEndPoint(IPAddress.Parse("1.1.1.1"), 53), (Packet packet) =>
-            {
-                logger.Success("Response callback invoked");
-                //log the packet bytes
-                logger.Debug(BitConverter.ToString(testPacket.packet).Replace("-", " "));
-                testPacket.Print();
-            });*/
-
             Server server = new Server((byte[] packet, bool isTCP, UniversalClient client) =>
             {
 
                 logger.Success("Request callback invoked");
-                //write the packet as hex
-                //logger.Debug(BitConverter.ToString(packet).Replace("-", " "));
                 Packet _packet = new Packet();
                 _packet.Load(packet, isTCP);
                 _packet.Print();
@@ -87,10 +60,6 @@ namespace GoodDns
 
                         _packet.flagpole.RCode = RCodes.NOERROR;
 
-                        //remove the question
-                        //_packet.questions = null;
-                        //_packet.questionCount = 0;
-
                         _packet.ToBytes(isTCP);
                         client.Send(_packet.packet);
                         client.Close();
@@ -99,15 +68,12 @@ namespace GoodDns
                         logger.Debug("Reinterpreting packet");
                         _packet.Load(_packet.packet, isTCP);
                         _packet.Print();
-                        //logger.Debug(BitConverter.ToString(_packet.packet).Replace("-", " "));
                     }
                     else
                     {
                         recordRequester.RequestRecord(_packet, new IPEndPoint(IPAddress.Parse("1.1.1.1"), 53), (Packet packet) =>
                         {
                             logger.Success("Response callback invoked");
-                            //log the packet bytes
-                            //logger.Debug(BitConverter.ToString(packet.packet).Replace("-", " "));
                             packet.Print();
                             client.Send(packet.ToBytes(isTCP));
                             client.Close();
@@ -117,19 +83,6 @@ namespace GoodDns
                     }
                 }
 
-
-                //PRINT THE PACKET
-                /*logger.Debug("Response packet");
-                _packet.Print();
-
-                recordRequester.RequestRecord(_packet, new IPEndPoint(IPAddress.Parse("1.1.1.1"), 53), (Packet packet) =>
-                {
-                    logger.Success("Response callback invoked");
-                    //log the packet bytes
-                    logger.Debug(BitConverter.ToString(packet.packet).Replace("-", " "));
-                    packet.Print();
-                });
-                recordRequester.Update();*/
             });
             server.Start();
 

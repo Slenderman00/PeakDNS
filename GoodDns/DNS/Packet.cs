@@ -246,27 +246,14 @@ namespace GoodDns.DNS
             //add the questions
             for (int i = 0; i < questionCount; i++)
             {
-                //logger.Debug("Current position question: " + currentPosition);
                 questions[i]?.Generate(ref packet, ref currentPosition);
-                //logger.Debug("Current position question end: " + currentPosition);
             }
 
             //add the answers
             for (int i = 0; i < answerCount; i++)
             {
-                //logger.Debug("Current position anwser: " + currentPosition);
                 answers[i]?.Generate(ref packet, ref currentPosition);
-                //logger.Debug("Current position anwser end: " + currentPosition);
             }
-
-            //shorten the packet
-            /*byte[] shortenedPacket = new byte[currentPosition];
-            for (int i = 0; i < currentPosition; i++)
-            {
-                shortenedPacket[i] = packet[i];
-            }
-
-            this.packet = shortenedPacket;*/
 
             //add the length to the packet and remove the first two bytes
             ushort length = (ushort)(currentPosition);
@@ -277,10 +264,6 @@ namespace GoodDns.DNS
             packet[1] = (byte)(length & 0xFF);
 
             this.packet = packet;
-
-            //logger.Debug("Packet length: " + length);
-            //log the bytes
-            //logger.Debug(BitConverter.ToString(packet).Replace("-", " "));
 
             return packet;
         }
@@ -323,8 +306,6 @@ namespace GoodDns.DNS
                 logger.Debug("Answer: " + i);
                 answers[i-1].Print();
             }
-            //debug log the packet bytes
-            logger.Debug(BitConverter.ToString(packet).Replace("-", " "));
         }
     }
 }
