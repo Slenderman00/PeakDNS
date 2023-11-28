@@ -3,7 +3,8 @@ namespace GoodDns.DNS
 {
     public class Flagpole {
 
-        static Logging<Flagpole> logger = new Logging<Flagpole>("./log.txt", logLevel: 5);
+        public Settings settings;
+        static Logging<Flagpole> logger;
 
         public bool AA = false;
         public bool TC = false;
@@ -19,6 +20,12 @@ namespace GoodDns.DNS
 
         public OPCodes OPcode = OPCodes.QUERY;
         public RCodes RCode = RCodes.NOERROR;
+
+        public Flagpole(Settings settings) {
+            this.settings = settings;
+            logger = new Logging<Flagpole>(settings.GetSetting("logging", "path", "./log.txt"), logLevel: int.Parse(settings.GetSetting("logging", "logLevel", "5")));
+        }
+
 
 
         public void Parse(ushort flags) {

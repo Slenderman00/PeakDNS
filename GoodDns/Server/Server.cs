@@ -36,12 +36,14 @@ namespace GoodDns
         PacketHandler _packetHandler;
         UDP udp;
         TCP tcp;
-        public Server(PacketHandler _packetHandler)
+        Settings settings;
+        public Server(PacketHandler _packetHandler, Settings settings)
         {
+            this.settings = settings;
             this._packetHandler = _packetHandler;
             //create a new UDP server
-            this.udp = new UDP(54321, packetHandler);
-            this.tcp = new TCP(54321, packetHandler);
+            this.udp = new UDP(int.Parse(settings.GetSetting("server", "port", "54321")), packetHandler, settings);
+            this.tcp = new TCP(int.Parse(settings.GetSetting("server", "port", "54321")), packetHandler, settings);
         }
 
         void packetHandler(byte[] packet, bool isTCP, UniversalClient client)

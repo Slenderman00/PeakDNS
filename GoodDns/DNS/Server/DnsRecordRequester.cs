@@ -8,7 +8,8 @@ namespace GoodDns.DNS.Server
 
     class Transaction
     {
-        Logging<Transaction> logger = new Logging<Transaction>("./log.txt", logLevel: 5);
+        Settings settings;
+        Logging<Transaction> logger;
         public Packet packet;
         public IPEndPoint server;
         public DateTime lastUpdated;
@@ -18,8 +19,11 @@ namespace GoodDns.DNS.Server
 
         //callback for when the transaction is complete
         public Action<Packet> callback;
-        public Transaction(Packet packet, IPEndPoint server, Action<Packet> callback)
+        public Transaction(Packet packet, IPEndPoint server, Action<Packet> callback, Settings settings)
         {
+            this.settings = settings;
+            this.logger = new Logging<Transaction>(settings.GetSetting("logging", "path", "./log.txt"), logLevel: int.Parse(settings.GetSetting("logging", "logLevel", "5")));
+
             //set the packet
             this.packet = packet;
             //set the transaction id to the packet's transaction id
@@ -48,7 +52,7 @@ namespace GoodDns.DNS.Server
             //print response data
 
             //process the response data, create a new packet, etc.
-            Packet responsePacket = new Packet();
+            Packet responsePacket = new Packet(settings);
     
             responsePacket.Load(responseData, false);
 
@@ -71,11 +75,17 @@ namespace GoodDns.DNS.Server
     public class RecordRequester
     {
         Transaction[] transactions = new Transaction[10];
+        Settings settings;
+
+        public RecordRequester(Settings settings)
+        {
+            this.settings = settings;
+        }
 
         public void RequestRecord(Packet packet, IPEndPoint server, Action<Packet> callback)
         {
             //create a new transaction
-            Transaction transaction = new Transaction(packet, server, callback);
+            Transaction transaction = new Transaction(packet, server, callback, settings);
             //add the transaction to the transaction list
             transactions[0] = transaction;
         }

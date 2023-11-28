@@ -63,7 +63,7 @@ namespace GoodDns.DNS
 
         public void Generate(ref byte[] packet, ref int currentPosition) {
 
-            if(answerType != RTypes.MX) {
+            if(answerType != RTypes.MX && answerType != RTypes.NS && answerType != RTypes.CNAME) {
                 //add an answer to the packet
                 //add the domain name
                 if(domainName != null) {
@@ -128,7 +128,7 @@ namespace GoodDns.DNS
                     }
                     break;
                 case RTypes.NS:
-                    logger.Debug("Name Server: " + Utility.GetDomainNameFromBytes(rData));
+                    logger.Debug("Name Server: " + Encoding.ASCII.GetString(rData));
                     break;
                 case RTypes.CNAME:
                     logger.Debug("Canonical Name: " + Utility.GetDomainNameFromBytes(rData));

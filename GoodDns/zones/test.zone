@@ -20,3 +20,4 @@ vpn                      60 A     216.146.45.240
 webapp                   60 A     216.146.46.10
 webapp                   60 A     216.146.46.11
 www                   43200 CNAME example.com.
+yeet                   3600 PTR   example.com.

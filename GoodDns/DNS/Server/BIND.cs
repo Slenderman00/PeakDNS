@@ -6,13 +6,19 @@ namespace GoodDns.DNS.Server
 {
     public class Record
     {
-        Logging<Record> logger = new Logging<Record>("./log.txt", logLevel: 5);
+        Settings settings;
+        Logging<Record> logger;
         public string name;
         public int ttl;
         public RClasses _class = RClasses.IN;
         public RTypes type;
         public ushort priority;
         public byte[] data;
+
+        public Record(Settings settings) {
+            settings = settings;
+            logger = new Logging<Record>(settings.GetSetting("logging", "path", "./log.txt"), logLevel: int.Parse(settings.GetSetting("logging", "logLevel", "5")));
+        }
 
         public RTypes getTypeByName(string name)
         {
@@ -39,10 +45,35 @@ namespace GoodDns.DNS.Server
             }
         }
 
+        public void parseTXTRecord(string line) {
+            //split " into parts
+            string[] TXTparts = line.Split("\"");
+            string dataPart = TXTparts[0];
+            //remove trailing and leading whitespace
+            dataPart = dataPart.Trim();
+            //remove whitespace leaving only one space between each word
+            dataPart = Regex.Replace(dataPart, @"\s+", " ");
+            //split the line into parts
+            string[] parts = dataPart.Split(' ');
 
-        //TODO: Parsing the data backwards allows for using a switch statement
+            ttl = int.Parse(parts[0]);
+
+            type = getTypeByName(parts[1]);
+            if(type != RTypes.TXT) {
+                logger.Error("Invalid TXT record: " + line);
+                return;
+            }
+            data = Utility.StringToBytes($"\"{TXTparts[1]}\"");
+        }
+
         public void parseLine(string line)
         {
+            //check if the line is a txt record
+            if(line.Contains("\"")) {
+                parseTXTRecord(line);
+                return;
+            }
+
             //remove trailing and leading whitespace
             line = line.Trim();
 
@@ -65,73 +96,81 @@ namespace GoodDns.DNS.Server
                 //make sure data is not an ip address
                 if (type == RTypes.A)
                 {
-                    data = ParseIP(parts[2]);
+                    data = Utility.ParseIP(parts[2]);
+                    return;
+                }
+
+                if(type == RTypes.NS) {
+                    data = Utility.GenerateDomainName(parts[2]);
+                    //add the null byte
+                    data = Utility.addNullByte(data);
                     return;
                 }
 
                 if (type == RTypes.MX)
                 {
                     logger.Debug("three bytes MX");
-                }
-
-                return;
-            }
-
-            if (parts.Length == 4 && getTypeByName(parts[1]) != RTypes.MX)
-            {
-                this.name = parts[0];
-                ttl = int.Parse(parts[1]);
-                type = getTypeByName(parts[2]);
-                //check if data is an ip address
-                if (type == RTypes.A)
-                {
-                    data = ParseIP(parts[3]);
                     return;
                 }
 
-                data = StringToBytes(parts[3]);
-
                 return;
             }
 
-            if (parts.Length == 4 && getTypeByName(parts[1]) == RTypes.MX)
-            {
-                ttl = int.Parse(parts[0]);
-                type = getTypeByName(parts[1]);
-
-                data = new byte[parts[3].Length + 3];
-
-                //parts 2 must be an ushort
-                ushort priority = ushort.Parse(parts[2]);
-                this.priority = priority;
-
-                data[0] = (byte)(priority >> 8);
-                data[1] = (byte)(priority & 0xFF);
-
-                byte[] domainName = Utility.GenerateDomainName(parts[3]);
-                for (int i = 0; i < domainName.Length; i++)
+            if(parts.Length == 4) {
+                if (getTypeByName(parts[1]) != RTypes.MX)
                 {
-                    logger.Debug($"domainName[{i}]: {domainName[i]}");
-                    data[i + 2] = domainName[i];
+                    name = parts[0];
+                    ttl = int.Parse(parts[1]);
+                    type = getTypeByName(parts[2]);
+                    //check if data is an ip address
+                    if (type == RTypes.A)
+                    {
+                        data = Utility.ParseIP(parts[3]);
+                        return;
+                    }
+
+                    if(type == RTypes.AAAA) {
+                        data = Utility.ParseIPv6(parts[3]);
+                        return;
+                    }
+
+                    if (type == RTypes.CNAME || type == RTypes.PTR) {
+                        data = Utility.GenerateDomainName(parts[3]);
+                        //add the null byte
+                        data = Utility.addNullByte(data);
+                        return;
+                    }
+
+                    data = Utility.StringToBytes(parts[3]);
+
+                    return;
+                }
+
+                if (getTypeByName(parts[1]) == RTypes.MX)
+                {
+                    ttl = int.Parse(parts[0]);
+                    type = getTypeByName(parts[1]);
+
+                    data = new byte[parts[3].Length + 3];
+
+                    //parts 2 must be an ushort
+                    ushort priority = ushort.Parse(parts[2]);
+                    this.priority = priority;
+
+                    data[0] = (byte)(priority >> 8);
+                    data[1] = (byte)(priority & 0xFF);
+
+                    byte[] domainName = Utility.GenerateDomainName(parts[3]);
+                    for (int i = 0; i < domainName.Length; i++)
+                    {
+                        data[i + 2] = domainName[i];
+                    }
+
+                    return;
                 }
 
                 return;
             }
-        }
-
-        public byte[] ParseIP(string ip)
-        {
-            string[] parts = ip.Split('.');
-            byte[] bytes = new byte[4];
-            for (int i = 0; i < 4; i++)
-            {
-                bytes[i] = byte.Parse(parts[i]);
-            }
-            return bytes;
-        }
-        public byte[] StringToBytes(string str)
-        {
-            return System.Text.Encoding.ASCII.GetBytes(str);
         }
 
         public void Print()
@@ -150,39 +189,10 @@ namespace GoodDns.DNS.Server
         }
     }
 
-    //This class represents a BIND zone file
-    //This dns server will base it anwsers on what is in these files and what is in the cache
-    //Items that are not in the cache will be requested from a list of other specified dns servers
-
-    //example zone file
-    /*
-    $ORIGIN example.com.
-    @                      3600 SOA   ns1.p30.dynect.net. (
-                                zone-admin.dyndns.com.     ; address of responsible party
-                                2016072701                 ; serial number
-                                3600                       ; refresh period
-                                600                        ; retry period
-                                604800                     ; expire time
-                                1800                     ) ; minimum ttl
-                        86400 NS    ns1.p30.dynect.net.
-                        86400 NS    ns2.p30.dynect.net.
-                        86400 NS    ns3.p30.dynect.net.
-                        86400 NS    ns4.p30.dynect.net.
-                        3600 MX    10 mail.example.com.
-                        3600 MX    20 vpn.example.com.
-                        3600 MX    30 mail.example.com.
-                            60 A     204.13.248.106
-                        3600 TXT   "v=spf1 includespf.dynect.net ~all"
-    mail                  14400 A     204.13.248.106
-    vpn                      60 A     216.146.45.240
-    webapp                   60 A     216.146.46.10
-    webapp                   60 A     216.146.46.11
-    www                   43200 CNAME example.com.
-    */
-
     public class BIND
     {
-        Logging<BIND> logger = new Logging<BIND>("./log.txt", logLevel: 5);
+        Settings settings;
+        Logging<BIND> logger;
 
         public string? origin = null;
         public string? primaryNameserver = null;
@@ -207,22 +217,11 @@ namespace GoodDns.DNS.Server
             }
             else
             {
-                Record record = new Record();
+                Record record = new Record(settings);
                 record.parseLine(line);
                 records.Add(record);
             }
         }
-
-        /*
-    @                      3600 SOA   ns1.p30.dynect.net. (
-                                zone-admin.dyndns.com.     ; address of responsible party
-                                2016072701                 ; serial number
-                                3600                       ; refresh period
-                                600                        ; retry period
-                                604800                     ; expire time
-                                1800                     ) ; minimum ttl
-
-        */
 
         private void parseSOA(string line)
         {
@@ -297,6 +296,72 @@ namespace GoodDns.DNS.Server
             if (line.Contains(')'))
             {
                 parsingSOA = false;
+
+                //add the SOA record
+                Record record = new Record(settings);
+                record.name = origin;
+                record.ttl = (int)TTL;
+                record.type = RTypes.SOA;
+                
+                //create a bytes list
+                byte[] nameserver = Utility.GenerateDomainName(primaryNameserver);
+                byte[] hostmaster = Utility.GenerateDomainName(this.hostmaster);
+                
+                byte[] data = new byte[primaryNameserver.Length + hostmaster.Length + 20];
+
+                int currentPosition = 0;
+                //add the primaryNameserver
+                for (int i = 0; i < nameserver.Length; i++)
+                {
+                    data[currentPosition] = nameserver[i];
+                    currentPosition++;
+                }
+
+                //add null byte
+                data[currentPosition] = 0;
+                currentPosition++;
+
+                //add the hostmaster
+                for (int i = 0; i < hostmaster.Length; i++)
+                {
+                    data[currentPosition] = hostmaster[i];
+                    currentPosition++;
+                }
+
+                //add null byte
+                data[currentPosition] = 0;
+                currentPosition++;
+
+                //add the serial
+                data[currentPosition] = (byte)(int.Parse(serial) >> 24);
+                data[currentPosition + 1] = (byte)(int.Parse(serial) >> 16);
+                data[currentPosition + 2] = (byte)(int.Parse(serial) >> 8);
+                data[currentPosition + 3] = (byte)(int.Parse(serial) & 0xFF);
+                currentPosition += 4;
+
+                //add the refresh
+                data[currentPosition] = (byte)(int.Parse(refresh) >> 24);
+                data[currentPosition + 1] = (byte)(int.Parse(refresh) >> 16);
+                data[currentPosition + 2] = (byte)(int.Parse(refresh) >> 8);
+                data[currentPosition + 3] = (byte)(int.Parse(refresh) & 0xFF);
+                currentPosition += 4;
+
+                //add the retry
+                data[currentPosition] = (byte)(int.Parse(retry) >> 24);
+                data[currentPosition + 1] = (byte)(int.Parse(retry) >> 16);
+                data[currentPosition + 2] = (byte)(int.Parse(retry) >> 8);
+                data[currentPosition + 3] = (byte)(int.Parse(retry) & 0xFF);
+                currentPosition += 4;
+
+                //add the expire
+                data[currentPosition] = (byte)(int.Parse(expire) >> 24);
+                data[currentPosition + 1] = (byte)(int.Parse(expire) >> 16);
+                data[currentPosition + 2] = (byte)(int.Parse(expire) >> 8);
+                data[currentPosition + 3] = (byte)(int.Parse(expire) & 0xFF);
+
+                record.data = data;
+
+                records.Add(record);
             }
 
         }
@@ -361,8 +426,11 @@ namespace GoodDns.DNS.Server
             }
         }
 
-        public BIND(string path)
+        public BIND(string path, Settings settings)
         {
+            this.settings = settings;
+            logger = new Logging<BIND>(settings.GetSetting("logging", "path", "./log.txt"), logLevel: int.Parse(settings.GetSetting("logging", "logLevel", "5")));
+            
             records = new List<Record>();
             string[] lines = File.ReadAllLines(path);
             foreach (string line in lines)

@@ -19,8 +19,8 @@ public class Tests
 
     private Packet GenerateDnsPacket() {
         //generate a dns packet
-        Packet packet = new Packet();
-        Question question = new Question("example.com.", RTypes.A, RClasses.IN);
+        Packet packet = new Packet(new Settings());
+        Question question = new Question("example.com.", RTypes.A, RClasses.IN, new Settings());
         packet.AddQuestion(question);
         packet.SetTransactionId(0x1234);
         packet.flagpole.AA = true;
@@ -36,7 +36,7 @@ public class Tests
         //create a server
         Server server = new Server((byte[] packet, bool isTCP, UniversalClient _) => {
             try {
-                Packet _packet = new Packet();
+                Packet _packet = new Packet(new Settings());
                 _packet.Load(packet, isTCP);
                 _packet.Print();
 
@@ -51,7 +51,7 @@ public class Tests
             } catch(Exception e) {
                 Console.WriteLine(e);
             }
-        });
+        }, new Settings());
         server.Start();
 
         //create a new UDP client
@@ -83,7 +83,7 @@ public class Tests
         //create a server
         Server server = new Server((byte[] packet, bool isTCP, UniversalClient _) => {
             try {
-                Packet _packet = new Packet();
+                Packet _packet = new Packet(new Settings());
                 _packet.Load(packet, isTCP);
                 _packet.Print();
 
@@ -98,7 +98,7 @@ public class Tests
             } catch(Exception e) {
                 Console.WriteLine(e);
             }
-        });
+        }, new Settings());
         server.Start();
 
         //create a new TCP client
@@ -128,7 +128,7 @@ public class Tests
 
     [Test]
     public void TestBIND() {
-        BIND bind = new BIND("../../../test.zone");
-        Assert.That(bind.records.Count, Is.EqualTo(14));
+        BIND bind = new BIND("../../../test.zone", new Settings());
+        Assert.That(bind.records.Count, Is.EqualTo(15));
     }
 }

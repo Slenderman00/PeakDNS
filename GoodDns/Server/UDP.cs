@@ -6,18 +6,22 @@ namespace GoodDns
 {
     class UDP
     {
-        Logging<UDP> logger = new Logging<UDP>("./log.txt", logLevel: 5);
+        Settings settings;
+        Logging<UDP> logger;
 
         //Make the UdpClient nullable to get the linter to shut up
         UdpClient listener;
         Task? listenTask;
-        Task[] ClientPool = new Task[10];
+        Task[] ClientPool;
         CancellationTokenSource cts = new CancellationTokenSource();
 
         public delegate void PacketHandlerCallback(byte[] packet, bool isTCP, UniversalClient client);
         PacketHandlerCallback callback;
-        public UDP(int port, PacketHandlerCallback packetHandler)
+        public UDP(int port, PacketHandlerCallback packetHandler, Settings settings)
         {
+            this.settings = settings;
+            logger = new Logging<UDP>(settings.GetSetting("logging", "path", "./log.txt"), logLevel: int.Parse(settings.GetSetting("logging", "logLevel", "5")));
+            ClientPool = new Task[int.Parse(settings.GetSetting("server", "udpThreads", "10"))];
             listener = new UdpClient(port);
             callback = packetHandler;
         }

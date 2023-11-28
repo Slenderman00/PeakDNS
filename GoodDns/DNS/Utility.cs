@@ -39,6 +39,7 @@ namespace GoodDns.DNS {
                     bytes.Add((byte)c);
                 }
             }
+
             //bytes.Add(0x00);
             return bytes.ToArray();
         }
@@ -46,6 +47,42 @@ namespace GoodDns.DNS {
         public static string GetDomainNameFromBytes(byte[] bytes) {
             int currentPosition = 0;
             return Utility.GetDomainName(bytes, ref currentPosition);
-        }    
+        }
+
+        public static byte[] addNullByte(byte[] bytes) {
+            List<byte> newBytes = new List<byte>();
+            foreach(byte b in bytes) {
+                newBytes.Add(b);
+            }
+            newBytes.Add(0x00);
+            return newBytes.ToArray();
+        }
+
+        public static byte[] StringToBytes(string str)
+        {
+            return System.Text.Encoding.ASCII.GetBytes(str);
+        }
+
+        public static byte[] ParseIP(string ip)
+        {
+            string[] parts = ip.Split('.');
+            byte[] bytes = new byte[4];
+            for (int i = 0; i < 4; i++)
+            {
+                bytes[i] = byte.Parse(parts[i]);
+            }
+            return bytes;
+        }
+
+        public static byte[] ParseIPv6(string ip)
+        {
+            string[] parts = ip.Split(':');
+            byte[] bytes = new byte[16];
+            for (int i = 0; i < 16; i++)
+            {
+                bytes[i] = byte.Parse(parts[i]);
+            }
+            return bytes;
+        }
     }
 }

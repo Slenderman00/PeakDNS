@@ -7,7 +7,8 @@ namespace GoodDns
 {
     class Program
     {
-        static Logging<Program> logger = new Logging<Program>("./log.txt", logLevel: 5);
+        static Settings settings = new Settings();
+        static Logging<Program> logger = new Logging<Program>(settings.GetSetting("logging", "path", "./log.txt"), logLevel: int.Parse(settings.GetSetting("logging", "logLevel", "5")));
         static BIND[] zones;
         static void Init()
         {
@@ -21,7 +22,7 @@ namespace GoodDns
             for (int i = 0; i < files.Length; i++)
             {
                 //create a new BIND object
-                zones[i] = new BIND(files[i]);
+                zones[i] = new BIND(files[i], settings);
                 logger.Info("Loaded zone file: " + files[i]);
                 zones[i].Print();
             }
@@ -29,7 +30,7 @@ namespace GoodDns
 
         static void Main(string[] args)
         {
-            RecordRequester recordRequester = new RecordRequester();
+            RecordRequester recordRequester = new RecordRequester(settings);
 
             Init();
 
@@ -37,7 +38,7 @@ namespace GoodDns
             {
 
                 logger.Success("Request callback invoked");
-                Packet _packet = new Packet();
+                Packet _packet = new Packet(settings);
                 _packet.Load(packet, isTCP);
                 _packet.Print();
 
@@ -83,7 +84,7 @@ namespace GoodDns
                     }
                 }
 
-            });
+            }, settings);
             server.Start();
 
             while (true)

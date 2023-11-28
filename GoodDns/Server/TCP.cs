@@ -5,17 +5,21 @@ using System.Threading.Tasks;
 
 namespace GoodDns {
     class TCP {
-        Logging<TCP> logger = new Logging<TCP>("./log.txt", logLevel: 5);
+        Settings settings;
+        Logging<TCP> logger;
         TcpListener? listener;
         Task? listenTask;
         bool running = false;
-        Task[] clientPool = new Task[10];
+        Task[] clientPool;
         CancellationTokenSource cts = new CancellationTokenSource();
 
         public delegate void PacketHandlerCallback(byte[] packet, bool isTCP, UniversalClient client);
         PacketHandlerCallback callback;
-        public TCP(int port, PacketHandlerCallback packetHandler) {
+        public TCP(int port, PacketHandlerCallback packetHandler, Settings settings) {
+            this.settings = settings;
+            logger = new Logging<TCP>(settings.GetSetting("logging", "path", "./log.txt"), logLevel: int.Parse(settings.GetSetting("logging", "logLevel", "5")));
             listener = new TcpListener(IPAddress.Any, port);
+            clientPool = new Task[int.Parse(settings.GetSetting("server", "tcpThreads", "10"))];
             callback = packetHandler;
         }
 

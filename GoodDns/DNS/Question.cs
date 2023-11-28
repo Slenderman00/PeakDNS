@@ -3,13 +3,17 @@ namespace GoodDns.DNS
 {
     public class Question
     {
-        static Logging<Question> logger = new Logging<Question>("./log.txt", logLevel: 5);
+        Settings settings;
+        static Logging<Question> logger;
         public string domainName;
         public RTypes type;
         public RClasses _class;
 
-        public Question(string domainName = "", RTypes RType = RTypes.A, RClasses RClass = RClasses.IN)
+        public Question(string domainName = "", RTypes RType = RTypes.A, RClasses RClass = RClasses.IN, Settings settings = null)
         {
+            this.settings = settings;
+            logger = new Logging<Question>(settings.GetSetting("logging", "path", "./log.txt"), logLevel: int.Parse(settings.GetSetting("logging", "logLevel", "5")));
+
             //create a new question
             this.domainName = domainName;
             this.type = RType;

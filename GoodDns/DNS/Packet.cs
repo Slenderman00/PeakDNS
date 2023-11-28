@@ -4,7 +4,8 @@ namespace GoodDns.DNS
 {
     public class Packet
     {
-        static Logging<Packet> logger = new Logging<Packet>("./log.txt", logLevel: 5);
+        Settings settings;
+        static Logging<Packet> logger;
 
         public byte[] packet;
 
@@ -17,8 +18,14 @@ namespace GoodDns.DNS
         public Answer[]? answers;
         public Question[]? questions;
 
-        public Flagpole flagpole = new Flagpole();
+        public Flagpole flagpole;
 
+        public Packet(Settings settings)
+        {
+            this.settings = settings;
+            logger = new Logging<Packet>(settings.GetSetting("logging", "path", "./log.txt"), logLevel: int.Parse(settings.GetSetting("logging", "logLevel", "5")));
+            flagpole = new Flagpole(settings);
+        }
 
         public void Load(byte[] packet, bool isTCP)
         {
@@ -89,7 +96,7 @@ namespace GoodDns.DNS
             questions = new Question[questionCount];
             for (int i = 0; i < questionCount; i++)
             {
-                questions[i] = new Question();
+                questions[i] = new Question(settings: settings);
                 questions[i].Load(ref packet, ref currentPosition);
             }
         }
@@ -306,6 +313,9 @@ namespace GoodDns.DNS
                 logger.Debug("Answer: " + i);
                 answers[i-1].Print();
             }
+
+            //print packet data as hex
+            logger.Debug(BitConverter.ToString(packet).Replace("-", " "));
         }
     }
 }
