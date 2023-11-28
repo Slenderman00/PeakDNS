@@ -315,7 +315,7 @@ namespace GoodDns.DNS
             }
 
             //print packet data as hex
-            logger.Debug(BitConverter.ToString(packet).Replace("-", " "));
+            //logger.Debug(BitConverter.ToString(packet).Replace("-", " "));
         }
     }
 }
