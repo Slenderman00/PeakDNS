@@ -194,13 +194,13 @@ namespace GoodDns.DNS.Server
         Settings settings;
         Logging<BIND> logger;
 
-        public string? origin = null;
-        public string? primaryNameserver = null;
-        public string? hostmaster = null;
-        public string? serial = null;
-        public string? refresh = null;
-        public string? retry = null;
-        public string? expire = null;
+        public string origin;
+        public string primaryNameserver;
+        public string hostmaster;
+        public string serial;
+        public string refresh;
+        public string retry;
+        public string expire;
         public int? TTL = null;
         public int? minimumTTL = null;
         public List<Record> records;
