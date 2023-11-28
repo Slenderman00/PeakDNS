@@ -39,16 +39,15 @@ namespace GoodDns.DNS.Server
             }
         }
 
+
+        //TODO: Parsing the data backwards allows for using a switch statement
         public void parseLine(string line)
         {
             //remove trailing and leading whitespace
             line = line.Trim();
+
             //remove whitespace leaving only one space between each word
             line = Regex.Replace(line, @"\s+", " ");
-            //logger.Debug("line: " + line);
-
-            //Allocate as much data as the length, this is a dumb way of doing it...
-            //data = new byte[line.Length];    
 
             //split the line into parts
             string[] parts = line.Split(' ');
@@ -58,8 +57,6 @@ namespace GoodDns.DNS.Server
                 logger.Error("Invalid record: " + line);
                 return;
             }
-
-            //logger.Debug("parts: " + string.Join(", ", parts));
 
             if (parts.Length == 3)
             {
@@ -77,19 +74,11 @@ namespace GoodDns.DNS.Server
                     logger.Debug("three bytes MX");
                 }
 
-                data = StringToBytes(parts[2]);
-                logger.Debug("--------------------");
-                this.Print();
-                //log all parts in the parts array
-                logger.Debug("parts: " + string.Join(", ", parts));
-                logger.Debug("--------------------");
                 return;
             }
 
             if (parts.Length == 4 && getTypeByName(parts[1]) != RTypes.MX)
             {
-                //logger.Debug("type: " + getTypeByName(parts[2]));
-                //logger.Debug("name: " + parts[0]);
                 this.name = parts[0];
                 ttl = int.Parse(parts[1]);
                 type = getTypeByName(parts[2]);
@@ -101,11 +90,7 @@ namespace GoodDns.DNS.Server
                 }
 
                 data = StringToBytes(parts[3]);
-                logger.Debug("--------------------");
-                this.Print();
-                //log all parts in the parts array
-                logger.Debug("parts: " + string.Join(", ", parts));
-                logger.Debug("--------------------");
+
                 return;
             }
 
@@ -113,9 +98,7 @@ namespace GoodDns.DNS.Server
             {
                 ttl = int.Parse(parts[0]);
                 type = getTypeByName(parts[1]);
-                //this.name = "example.com";
 
-                //relative domain name
                 data = new byte[parts[3].Length + 3];
 
                 //parts 2 must be an ushort
@@ -125,21 +108,12 @@ namespace GoodDns.DNS.Server
                 data[0] = (byte)(priority >> 8);
                 data[1] = (byte)(priority & 0xFF);
 
-                //logger.Debug($"Priority 1: {(ushort)data[0]}");
-                //the rest of the data must be the exchange name
                 byte[] domainName = Utility.GenerateDomainName(parts[3]);
-                //parts[3] = parts[3].Remove(parts[3].Length - 1);
-                //byte[] domainName = StringToBytes(parts[3]);
                 for (int i = 0; i < domainName.Length; i++)
                 {
                     logger.Debug($"domainName[{i}]: {domainName[i]}");
                     data[i + 2] = domainName[i];
                 }
-                logger.Debug("--------------------");
-                this.Print();
-                //log all parts in the parts array
-                logger.Debug("parts: " + string.Join(", ", parts));
-                logger.Debug("--------------------");
 
                 return;
             }
@@ -158,7 +132,6 @@ namespace GoodDns.DNS.Server
         public byte[] StringToBytes(string str)
         {
             return System.Text.Encoding.ASCII.GetBytes(str);
-            //return new byte[0];
         }
 
         public void Print()
@@ -264,15 +237,11 @@ namespace GoodDns.DNS.Server
             //remove trailing and leading whitespace
             line = line.Trim();
             string[] parts = line.Split(' ');
-            //logger.Debug("line: " + line);
-            //logger.Debug("parts: " + string.Join(", ", parts));
             //check if ttl is set
             if (TTL == null)
             {
                 TTL = Int32.Parse(parts[0]);
                 primaryNameserver = parts[2];
-                //logger.Debug("TTL: " + TTL);
-                //logger.Debug("primaryNameserver: " + primaryNameserver);
                 return;
             }
             //check if array is empty
@@ -283,7 +252,6 @@ namespace GoodDns.DNS.Server
                 hostmaster = parts[0];
                 //strip these parts from the parts array
                 parts = parts.Skip(1).ToArray();
-                //logger.Debug("hostmaster: " + hostmaster);
             }
             if (parts.Length == 0) return;
             //check if serial
@@ -292,7 +260,6 @@ namespace GoodDns.DNS.Server
                 serial = parts[0];
                 //remove this data from the parts array
                 parts = parts.Skip(1).ToArray();
-                //logger.Debug("serial: " + serial);
             }
             if (parts.Length == 0) return;
             //check if refresh is set
@@ -301,7 +268,6 @@ namespace GoodDns.DNS.Server
                 refresh = parts[0];
                 //remove this data from the parts array
                 parts = parts.Skip(1).ToArray();
-                //logger.Debug("refresh: " + refresh);
             }
             if (parts.Length == 0) return;
             //check if retry is set
@@ -310,7 +276,6 @@ namespace GoodDns.DNS.Server
                 retry = parts[0];
                 //remove this data from the parts array
                 parts = parts.Skip(1).ToArray();
-                //logger.Debug("retry: " + retry);
             }
             if (parts.Length == 0) return;
             //check if expire is set
@@ -319,7 +284,6 @@ namespace GoodDns.DNS.Server
                 expire = parts[0];
                 //remove this data from the parts array
                 parts = parts.Skip(1).ToArray();
-                //logger.Debug("expire: " + expire);
             }
             if (parts.Length == 0) return;
             //check if minimumTTL is set
@@ -328,7 +292,6 @@ namespace GoodDns.DNS.Server
                 minimumTTL = Int32.Parse(parts[0]);
                 //remove this data from the parts array
                 parts = parts.Skip(1).ToArray();
-                //logger.Debug("minimumTTL: " + minimumTTL);
             }
             if (parts.Length == 0) return;
             if (line.Contains(')'))
