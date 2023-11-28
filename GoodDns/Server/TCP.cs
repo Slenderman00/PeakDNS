@@ -12,7 +12,7 @@ namespace GoodDns {
         Task[] clientPool = new Task[10];
         CancellationTokenSource cts = new CancellationTokenSource();
 
-        public delegate void PacketHandlerCallback(byte[] packet, bool isTCP);
+        public delegate void PacketHandlerCallback(byte[] packet, bool isTCP, UniversalClient client);
         PacketHandlerCallback callback;
         public TCP(int port, PacketHandlerCallback packetHandler) {
             listener = new TcpListener(IPAddress.Any, port);
@@ -29,7 +29,7 @@ namespace GoodDns {
                 try {
                     TcpClient? client;
                     while((client = listener?.AcceptTcpClient()) != null && (running || !cts.IsCancellationRequested)) {
-                        logger.Debug("Client connected from: " + client.Client.RemoteEndPoint);
+                        logger.Info("Client connected from: " + client.Client.RemoteEndPoint);
                         if(client != null) {
                             assignTask(client, ct);
                         }
@@ -60,13 +60,19 @@ namespace GoodDns {
             NetworkStream? stream = client.GetStream();
             byte[]? buffer = new byte[1024];
             int bytesRead;
-            while ((bytesRead = stream.Read(buffer, 0, buffer.Length)) > 0)
-            {
-                if (ct.IsCancellationRequested) {
-                    break;
-                }
+            try {
+                while ((bytesRead = stream.Read(buffer, 0, buffer.Length)) > 0)
+                {
+                    if (ct.IsCancellationRequested) {
+                        break;
+                    }
 
-                callback(buffer, true);
+                    callback(buffer, true, new UniversalClient(tcpClient: client));
+                }
+            } catch(System.IO.IOException e) {
+                logger.Warning($"IOException: {e.Message}");
+            } catch(ObjectDisposedException e) {
+                logger.Warning($"ObjectDisposedException: {e.Message}");
             }
         }
 

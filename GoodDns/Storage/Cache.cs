@@ -6,7 +6,7 @@ namespace GoodDns.Storage
     class Entry
     {
         public Packet packet;
-        public uint timeToLive;
+        public int timeToLive;
 
         public Entry(Packet packet)
         {
@@ -15,7 +15,7 @@ namespace GoodDns.Storage
             if (packet.answerCount > 0)
             {
                 //get the time to live from the first anwser
-                timeToLive = packet.answers[0].ttl + (uint)DateTimeOffset.Now.ToUnixTimeSeconds();
+                timeToLive = packet.answers[0].ttl + (int)DateTimeOffset.Now.ToUnixTimeSeconds();
             }
         }
     }

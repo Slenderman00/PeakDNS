@@ -5,23 +5,23 @@ namespace GoodDns.DNS
     {
         static Logging<Question> logger = new Logging<Question>("./log.txt", logLevel: 5);
         public string domainName;
-        public RTypes questionType;
-        public RClasses questionClass;
+        public RTypes type;
+        public RClasses _class;
 
         public Question(string domainName = "", RTypes RType = RTypes.A, RClasses RClass = RClasses.IN)
         {
             //create a new question
             this.domainName = domainName;
-            this.questionType = RType;
-            this.questionClass = RClass;
+            this.type = RType;
+            this._class = RClass;
         }
 
         public void Print()
         {
             //print the packet
             logger.Debug("Domain Name: " + domainName);
-            logger.Debug("Question Type: " + Enum.GetName(typeof(RTypes), questionType));
-            logger.Debug("Question Class: " + Enum.GetName(typeof(RClasses), questionClass));
+            logger.Debug("Question Type: " + Enum.GetName(typeof(RTypes), type));
+            logger.Debug("Question Class: " + Enum.GetName(typeof(RClasses), _class));
         }
         public string GetDomainName()
         {
@@ -32,13 +32,13 @@ namespace GoodDns.DNS
         public ushort GetQType()
         {
             //get the question type
-            return (ushort)questionType;
+            return (ushort)type;
         }
 
         public ushort GetQClass()
         {
             //get the question class
-            return (ushort)questionClass;
+            return (ushort)_class;
         }
 
         public void Load(ref byte[] packet, ref int currentPosition)
@@ -47,24 +47,14 @@ namespace GoodDns.DNS
             //load the domain name
             this.domainName = Utility.GetDomainName(packet, ref currentPosition);
 
-            //print bytes
-            logger.Debug(BitConverter.ToString(packet).Replace("-", " "));
-            logger.Info($"currentPosition: {currentPosition}");
-
             // Load the question type
-            //print the 2 relevant bytes
-            logger.Debug($"Type Bytes: {BitConverter.ToString(packet, currentPosition, 2).Replace("-", " ")}");
             ushort questionTypeValue = (ushort)((packet[currentPosition] << 8) | packet[currentPosition + 1]);
-            this.questionType = (RTypes)questionTypeValue;
-            logger.Info($"Question Type Value: {questionTypeValue}, Enum: {Enum.GetName(typeof(RTypes), this.questionType)}");
+            this.type = (RTypes)questionTypeValue;
             currentPosition += 2;
 
             // Load the question class
-            //print the 2 relevant bytes
-            logger.Debug($"Class Bytes: {BitConverter.ToString(packet, currentPosition, 2).Replace("-", " ")}");
             ushort questionClassValue = (ushort)((packet[currentPosition] << 8) | packet[currentPosition + 1]);
-            this.questionClass = (RClasses)questionClassValue;
-            logger.Info($"Question Class Value: {questionClassValue}, Enum: {Enum.GetName(typeof(RClasses), this.questionClass)}");
+            this._class = (RClasses)questionClassValue;
             currentPosition += 2;
         }
 
@@ -86,14 +76,17 @@ namespace GoodDns.DNS
 
             packet[currentPosition] = 0;
 
+            //this fixes the test but breaks the program
+            //currentPosition++;
+
             //add the question type
-            packet[currentPosition] = (byte)((ushort)this.questionType >> 8);
-            packet[currentPosition + 1] = (byte)((ushort)this.questionType & 0xFF);
+            packet[currentPosition] = (byte)((ushort)this.type >> 8);
+            packet[currentPosition + 1] = (byte)((ushort)this.type & 0xFF);
             currentPosition += 2;
 
             //add the question class
-            packet[currentPosition] = (byte)((ushort)this.questionClass >> 8);
-            packet[currentPosition + 1] = (byte)((ushort)this.questionClass & 0xFF);
+            packet[currentPosition] = (byte)((ushort)this._class >> 8);
+            packet[currentPosition + 1] = (byte)((ushort)this._class & 0xFF);
             currentPosition += 2;
         }
     }

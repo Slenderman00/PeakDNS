@@ -14,7 +14,7 @@ namespace GoodDns
         Task[] ClientPool = new Task[10];
         CancellationTokenSource cts = new CancellationTokenSource();
 
-        public delegate void PacketHandlerCallback(byte[] packet, bool isTCP);
+        public delegate void PacketHandlerCallback(byte[] packet, bool isTCP, UniversalClient client);
         PacketHandlerCallback callback;
         public UDP(int port, PacketHandlerCallback packetHandler)
         {
@@ -64,8 +64,9 @@ namespace GoodDns
 
         private void HandleClient(UdpReceiveResult data)
         {
-            logger.Debug("Client connected from: " + data.RemoteEndPoint);
-            callback(data.Buffer, false);
+            logger.Info("Client connected from: " + data.RemoteEndPoint);
+            //create a new udp socket for use by the UniversalClient
+            callback(data.Buffer, false, new UniversalClient(clientEndPoint: data.RemoteEndPoint, udpClient: listener, tcpClient: null));
         }
 
         public void Stop()
