@@ -21,6 +21,7 @@ namespace GoodDns
                     }
                     string[] parts = line.Split("=");
                     if(parts.Length != 2) continue;
+                    Console.WriteLine($"Setting {currentSection}.{parts[0]} to {parts[1]}");
                     settings[currentSection][parts[0]] = parts[1];
                 }
             } catch(Exception e) {

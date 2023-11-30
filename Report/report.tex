@@ -447,20 +447,22 @@ The server expects a configuration file named \textit{settings.ini} to be presen
 the settings file should look like this:
 \begin{lstlisting}
     [logging]
-    path=./log.txt; the path to the log file.
-    logLevel=1; the log level, 0 is no logging, 1 is info logging, 
-    ;2 is debug logging... 5 is warning logging.
+    #the path to the log file.
+    path=./log.txt
+    # the log level, 0 is no logging, 
+    #1 is info logging, 2 is debug logging... 5 is warning logging.
+    logLevel=1
     [server]
-    port=54321; this port is used for both TCP and UDP,
-    ;note DNS usually uses port 53.
-    tcpThreads=10; the amount of threads allowed to be 
-    ;used by the TCP server.
-    udpThreads=10; the amount of threads allowed to be 
-    ;used by the UDP server.
+    port=54321
+    #the amount of threads allowed to be used by the TCP server.
+    tcpThreads=10
+    #the amount of threads allowed to be used by the UDP server.
+    udpThreads=10
     [requester]
-    server=1.1.1.1; the DNS server to use for 
-    ;recursive DNS queries.
-    path=./zones; the path to the zone files.
+    #the DNS server to use for recursive DNS queries
+    server=1.1.1.1
+    #the path to the zone files.
+    path=./zones
 \end{lstlisting}
 All settings have a standard parameter and will run with the settings above if no settings file is found.
 
