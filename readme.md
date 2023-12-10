@@ -6,6 +6,8 @@ A Good DNS server
 GoodDNS is a DNS server implemented in C#. It is developed to be as simple yet efficient as possible, relying on a simple event based architecture.
 The server is mainly intended to be used as a Source Of Authority (SOA) for third level subdomains.
 
+More information is available on my [blog](https://joar.me/blog.html#GoodDNS)
+
 
 ## Usage
 
