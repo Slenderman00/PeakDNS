@@ -1,0 +1,259 @@
+% $ biblatex auxiliary file $
+% $ biblatex bbl format version 3.2 $
+% Do not modify the above lines!
+%
+% This is an auxiliary file used by the 'biblatex' package.
+% This file may safely be deleted. It will be recreated by
+% biber as required.
+%
+\begingroup
+\makeatletter
+\@ifundefined{ver@biblatex.sty}
+  {\@latex@error
+     {Missing 'biblatex' package}
+     {The bibliography requires the 'biblatex' package.}
+      \aftergroup\endinput}
+  {}
+\endgroup
+
+
+\refsection{0}
+  \datalist[entry]{nty/global//global/global}
+    \entry{Git}{misc}{}
+      \field{sortinit}{A}
+      \field{sortinithash}{2f401846e2029bad6b3ecc16d50031e2}
+      \field{labeltitlesource}{title}
+      \field{howpublished}{https://git-scm.com/about}
+      \field{title}{About - {{Git}}}
+      \field{urlday}{29}
+      \field{urlmonth}{11}
+      \field{urlyear}{2023}
+      \field{urldateera}{ce}
+      \verb{file}
+      \verb /home/joar/Zotero/storage/WJ5W2BJQ/about.html
+      \endverb
+    \endentry
+    \entry{UnifiedModelingLanguage}{misc}{}
+      \field{sortinit}{A}
+      \field{sortinithash}{2f401846e2029bad6b3ecc16d50031e2}
+      \field{labeltitlesource}{title}
+      \field{howpublished}{https://www.omg.org/spec/UML/2.5/}
+      \field{title}{About the {{Unified Modeling Language Specification Version}} 2.5}
+      \field{urlday}{29}
+      \field{urlmonth}{11}
+      \field{urlyear}{2023}
+      \field{urldateera}{ce}
+      \verb{file}
+      \verb /home/joar/Zotero/storage/2DSNURLB/2.5.html
+      \endverb
+    \endentry
+    \entry{billwagnerNETDocumentationCoding2023}{misc}{}
+      \name{author}{1}{}{%
+        {{hash=e3a36de53b51204b5b96e1974ca0488e}{%
+           family={BillWagner},
+           familyi={B\bibinitperiod}}}%
+      }
+      \strng{namehash}{e3a36de53b51204b5b96e1974ca0488e}
+      \strng{fullhash}{e3a36de53b51204b5b96e1974ca0488e}
+      \strng{bibnamehash}{e3a36de53b51204b5b96e1974ca0488e}
+      \strng{authorbibnamehash}{e3a36de53b51204b5b96e1974ca0488e}
+      \strng{authornamehash}{e3a36de53b51204b5b96e1974ca0488e}
+      \strng{authorfullhash}{e3a36de53b51204b5b96e1974ca0488e}
+      \field{sortinit}{B}
+      \field{sortinithash}{d7095fff47cda75ca2589920aae98399}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{abstract}{Learn about commonly used coding conventions in C\#. Coding conventions create a consistent look to the code and facilitate copying, changing, and maintaining the code. This article also includes the docs repo coding guidelines}
+      \field{howpublished}{https://learn.microsoft.com/en-us/dotnet/csharp/fundamentals/coding-style/coding-conventions}
+      \field{langid}{american}
+      \field{month}{8}
+      \field{title}{.{{NET}} Documentation {{C}}\# {{Coding Conventions}} - {{C}}\#}
+      \field{urlday}{29}
+      \field{urlmonth}{11}
+      \field{urlyear}{2023}
+      \field{year}{2023}
+      \field{urldateera}{ce}
+      \verb{file}
+      \verb /home/joar/Zotero/storage/P466IBHJ/coding-conventions.html
+      \endverb
+    \endentry
+    \entry{CUPIDJoyfulCoding2022}{misc}{}
+      \field{sortinit}{C}
+      \field{sortinithash}{4d103a86280481745c9c897c925753c0}
+      \field{labeltitlesource}{title}
+      \field{abstract}{What started as lighthearted iconoclasm, poking at the bear of SOLID, has developed into something more concrete and tangible. If I do not think the SOLID principles are useful these days, then what would I replace them with? Can any set of principles hold for all software? What do we even mean by principles?}
+      \field{chapter}{blog}
+      \field{howpublished}{https://dannorth.net/cupid-for-joyful-coding/}
+      \field{langid}{english}
+      \field{month}{2}
+      \field{title}{{{CUPID}}—for Joyful Coding}
+      \field{urlday}{29}
+      \field{urlmonth}{11}
+      \field{urlyear}{2023}
+      \field{year}{2022}
+      \field{urldateera}{ce}
+      \verb{file}
+      \verb /home/joar/Zotero/storage/BUSKKBMX/cupid-for-joyful-coding.html
+      \endverb
+    \endentry
+    \entry{DomainNamesImplementation1987}{report}{}
+      \list{institution}{1}{%
+        {Internet Engineering Task Force}%
+      }
+      \field{sortinit}{D}
+      \field{sortinithash}{6f385f66841fb5e82009dc833c761848}
+      \field{labeltitlesource}{title}
+      \field{abstract}{This RFC is the revised specification of the protocol and format used in the implementation of the Domain Name System. It obsoletes RFC-883. This memo documents the details of the domain name client - server communication.}
+      \field{month}{11}
+      \field{number}{RFC 1035}
+      \field{title}{Domain Names - Implementation and Specification}
+      \field{type}{Request for {{Comments}}}
+      \field{urlday}{29}
+      \field{urlmonth}{11}
+      \field{urlyear}{2023}
+      \field{year}{1987}
+      \field{urldateera}{ce}
+      \verb{doi}
+      \verb 10.17487/RFC1035
+      \endverb
+      \verb{file}
+      \verb /home/joar/Zotero/storage/HKKCPIVN/1987 - Domain names - implementation and specification.pdf
+      \endverb
+    \endentry
+    \entry{GRASPObjectorientedDesign2023}{article}{}
+      \field{sortinit}{G}
+      \field{sortinithash}{32d67eca0634bf53703493fb1090a2e8}
+      \field{labeltitlesource}{title}
+      \field{abstract}{General Responsibility Assignment Software Patterns (or Principles), abbreviated GRASP, is a set of "nine fundamental principles in object design and responsibility assignment":{$\mkern1mu$}6{$\mkern1mu$} first published by Craig Larman in his 1997 book Applying UML and Patterns. The different patterns and principles used in GRASP are controller, creator, indirection, information expert, low coupling, high cohesion, polymorphism, protected variations, and pure fabrication. All these patterns solve some software problems common to many software development projects. These techniques have not been invented to create new ways of working, but to better document and standardize old, tried-and-tested programming principles in object-oriented design. Larman states that "the critical design tool for software development is a mind well educated in design principles. It is not UML or any other technology.":{$\mkern1mu$}272{$\mkern1mu$} Thus, the GRASP principles are really a mental toolset, a learning aid to help in the design of object-oriented software.}
+      \field{annotation}{Page Version ID: 1159702789}
+      \field{journaltitle}{Wikipedia}
+      \field{langid}{english}
+      \field{month}{6}
+      \field{title}{{{GRASP}} (Object-Oriented Design)}
+      \field{urlday}{29}
+      \field{urlmonth}{11}
+      \field{urlyear}{2023}
+      \field{year}{2023}
+      \field{urldateera}{ce}
+      \verb{file}
+      \verb /home/joar/Zotero/storage/336KPNE6/GRASP_(object-oriented_design).html
+      \endverb
+    \endentry
+    \entry{https://themeforest.net/user/dan_fisherOMGObjectManagement}{misc}{}
+      \name{author}{1}{}{%
+        {{hash=d7c1650005c226a39435fff61c1ce564}{%
+           family={{https://themeforest.net/user/dan\_fisher}},
+           familyi={h\bibinitperiod}}}%
+      }
+      \strng{namehash}{d7c1650005c226a39435fff61c1ce564}
+      \strng{fullhash}{d7c1650005c226a39435fff61c1ce564}
+      \strng{bibnamehash}{d7c1650005c226a39435fff61c1ce564}
+      \strng{authorbibnamehash}{d7c1650005c226a39435fff61c1ce564}
+      \strng{authornamehash}{d7c1650005c226a39435fff61c1ce564}
+      \strng{authorfullhash}{d7c1650005c226a39435fff61c1ce564}
+      \field{sortinit}{h}
+      \field{sortinithash}{23a3aa7c24e56cfa16945d55545109b5}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{abstract}{Welcome to the website of the Object Management Group. We are celebrating 25 years of setting the standard! The Object Management Group (OMG) is an international, OMG, open membership, not-for-profit technology standards consortium industry standards consortium. OMG Task Forces develop enterprise integration standards for a wide range of technologies and an even wider range of industries. OMG s modeling standards enable powerful visual design, execution and maintenance of software and other processes. On this index page you will find links to upcoming events, specifications, news, and other resources.}
+      \field{howpublished}{https://www.omg.org/index.htm}
+      \field{langid}{english}
+      \field{title}{{{OMG}} | {{Object Management Group}}}
+      \field{urlday}{29}
+      \field{urlmonth}{11}
+      \field{urlyear}{2023}
+      \field{urldateera}{ce}
+      \verb{file}
+      \verb /home/joar/Zotero/storage/AAWFWA3R/index.html
+      \endverb
+    \endentry
+    \entry{InternetProtocol1981}{report}{}
+      \list{institution}{1}{%
+        {Internet Engineering Task Force}%
+      }
+      \field{sortinit}{I}
+      \field{sortinithash}{8d291c51ee89b6cd86bf5379f0b151d8}
+      \field{labeltitlesource}{title}
+      \field{month}{9}
+      \field{number}{RFC 791}
+      \field{title}{Internet {{Protocol}}}
+      \field{type}{Request for {{Comments}}}
+      \field{urlday}{29}
+      \field{urlmonth}{11}
+      \field{urlyear}{2023}
+      \field{year}{1981}
+      \field{urldateera}{ce}
+      \verb{doi}
+      \verb 10.17487/RFC0791
+      \endverb
+      \verb{file}
+      \verb /home/joar/Zotero/storage/YHN6DQ4F/1981 - Internet Protocol.pdf
+      \endverb
+    \endentry
+    \entry{martinDesignPrinciplesDesign2000}{article}{}
+      \name{author}{1}{}{%
+        {{hash=6f41df64eb0dc4855be70172368604c2}{%
+           family={Martin},
+           familyi={M\bibinitperiod},
+           given={Robert\bibnamedelima C},
+           giveni={R\bibinitperiod\bibinitdelim C\bibinitperiod}}}%
+      }
+      \strng{namehash}{6f41df64eb0dc4855be70172368604c2}
+      \strng{fullhash}{6f41df64eb0dc4855be70172368604c2}
+      \strng{bibnamehash}{6f41df64eb0dc4855be70172368604c2}
+      \strng{authorbibnamehash}{6f41df64eb0dc4855be70172368604c2}
+      \strng{authornamehash}{6f41df64eb0dc4855be70172368604c2}
+      \strng{authorfullhash}{6f41df64eb0dc4855be70172368604c2}
+      \field{sortinit}{M}
+      \field{sortinithash}{4625c616857f13d17ce56f7d4f97d451}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{langid}{english}
+      \field{title}{Design {{Principles}} and {{Design Patterns}}}
+      \field{year}{2000}
+      \verb{file}
+      \verb /home/joar/Zotero/storage/F9XHA5VX/Martin - 2000 - Design Principles and Design Patterns.pdf
+      \endverb
+    \endentry
+    \entry{SOLID2023}{article}{}
+      \field{sortinit}{S}
+      \field{sortinithash}{b164b07b29984b41daf1e85279fbc5ab}
+      \field{labeltitlesource}{title}
+      \field{abstract}{In software engineering, SOLID is a mnemonic acronym for five design principles intended to make object-oriented designs more understandable, flexible, and maintainable. The principles are a subset of many principles promoted by American software engineer and instructor Robert C. Martin, first introduced in his 2000 paper Design Principles and Design Patterns discussing software rot.:{$\mkern1mu$}2–3{$\mkern1mu$}The SOLID ideas are The Single-responsibility principle: "There should never be more than one reason for a class to change." In other words, every class should have only one responsibility. The Open–closed principle: "Software entities ... should be open for extension, but closed for modification." The Liskov substitution principle: "Functions that use pointers or references to base classes must be able to use objects of derived classes without knowing it." See also design by contract. The Interface segregation principle: "Clients should not be forced to depend upon interfaces that they do not use." The Dependency inversion principle: "Depend upon abstractions, [not] concretes."The SOLID acronym was introduced later, around 2004, by Michael Feathers.Although the SOLID principles apply to any object-oriented design, they can also form a core philosophy for methodologies such as agile development or adaptive software development.}
+      \field{annotation}{Page Version ID: 1186234979}
+      \field{journaltitle}{Wikipedia}
+      \field{langid}{english}
+      \field{month}{11}
+      \field{title}{{{SOLID}}}
+      \field{urlday}{29}
+      \field{urlmonth}{11}
+      \field{urlyear}{2023}
+      \field{year}{2023}
+      \field{urldateera}{ce}
+      \verb{file}
+      \verb /home/joar/Zotero/storage/TFF5PBSS/SOLID.html
+      \endverb
+    \endentry
+    \entry{ZoneFile2023}{article}{}
+      \field{sortinit}{Z}
+      \field{sortinithash}{96892c0b0a36bb8557c40c49813d48b3}
+      \field{labeltitlesource}{title}
+      \field{abstract}{A Domain Name System (DNS) zone file is a text file that describes a DNS zone. A DNS zone is a subset, often a single domain, of the hierarchical domain name structure of the DNS. The zone file contains mappings between domain names and IP addresses and other resources, organized in the form of text representations of resource records (RR). A zone file may be either a DNS master file, authoritatively describing a zone, or it may be used to list the contents of a DNS cache.}
+      \field{annotation}{Page Version ID: 1171171798}
+      \field{journaltitle}{Wikipedia}
+      \field{langid}{english}
+      \field{month}{8}
+      \field{title}{Zone File}
+      \field{urlday}{29}
+      \field{urlmonth}{11}
+      \field{urlyear}{2023}
+      \field{year}{2023}
+      \field{urldateera}{ce}
+      \verb{file}
+      \verb /home/joar/Zotero/storage/WGGKX4ZT/Zone_file.html
+      \endverb
+    \endentry
+  \enddatalist
+\endrefsection
+\endinput
+

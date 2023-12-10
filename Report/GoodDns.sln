@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GoodDns", "GoodDns\GoodDns.csproj", "{84300A79-1B40-4F74-A700-D97D1743CE94}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GoodDns.Tests", "GoodDns.Tests\GoodDns.Tests.csproj", "{7FA8EFB1-22E7-441D-8697-985D6BF95FB5}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{84300A79-1B40-4F74-A700-D97D1743CE94}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{84300A79-1B40-4F74-A700-D97D1743CE94}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{84300A79-1B40-4F74-A700-D97D1743CE94}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{84300A79-1B40-4F74-A700-D97D1743CE94}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7FA8EFB1-22E7-441D-8697-985D6BF95FB5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7FA8EFB1-22E7-441D-8697-985D6BF95FB5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7FA8EFB1-22E7-441D-8697-985D6BF95FB5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7FA8EFB1-22E7-441D-8697-985D6BF95FB5}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

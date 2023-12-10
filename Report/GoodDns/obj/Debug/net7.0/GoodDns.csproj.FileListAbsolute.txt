@@ -1,0 +1,15 @@
+/home/joar/Desktop/PG3302/goodDns/GoodDns/bin/Debug/net7.0/GoodDns
+/home/joar/Desktop/PG3302/goodDns/GoodDns/bin/Debug/net7.0/GoodDns.deps.json
+/home/joar/Desktop/PG3302/goodDns/GoodDns/bin/Debug/net7.0/GoodDns.runtimeconfig.json
+/home/joar/Desktop/PG3302/goodDns/GoodDns/bin/Debug/net7.0/GoodDns.dll
+/home/joar/Desktop/PG3302/goodDns/GoodDns/bin/Debug/net7.0/GoodDns.pdb
+/home/joar/Desktop/PG3302/goodDns/GoodDns/obj/Debug/net7.0/GoodDns.csproj.AssemblyReference.cache
+/home/joar/Desktop/PG3302/goodDns/GoodDns/obj/Debug/net7.0/GoodDns.GeneratedMSBuildEditorConfig.editorconfig
+/home/joar/Desktop/PG3302/goodDns/GoodDns/obj/Debug/net7.0/GoodDns.AssemblyInfoInputs.cache
+/home/joar/Desktop/PG3302/goodDns/GoodDns/obj/Debug/net7.0/GoodDns.AssemblyInfo.cs
+/home/joar/Desktop/PG3302/goodDns/GoodDns/obj/Debug/net7.0/GoodDns.csproj.CoreCompileInputs.cache
+/home/joar/Desktop/PG3302/goodDns/GoodDns/obj/Debug/net7.0/GoodDns.dll
+/home/joar/Desktop/PG3302/goodDns/GoodDns/obj/Debug/net7.0/refint/GoodDns.dll
+/home/joar/Desktop/PG3302/goodDns/GoodDns/obj/Debug/net7.0/GoodDns.pdb
+/home/joar/Desktop/PG3302/goodDns/GoodDns/obj/Debug/net7.0/GoodDns.genruntimeconfig.cache
+/home/joar/Desktop/PG3302/goodDns/GoodDns/obj/Debug/net7.0/ref/GoodDns.dll

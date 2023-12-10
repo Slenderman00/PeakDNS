@@ -1,0 +1,5 @@
+/home/joar/Desktop/PG3302/goodDns/goodDns.Tests/obj/Debug/net7.0/goodDns.Tests.csproj.AssemblyReference.cache
+/home/joar/Desktop/PG3302/goodDns/goodDns.Tests/obj/Debug/net7.0/goodDns.Tests.GeneratedMSBuildEditorConfig.editorconfig
+/home/joar/Desktop/PG3302/goodDns/goodDns.Tests/obj/Debug/net7.0/goodDns.Tests.AssemblyInfoInputs.cache
+/home/joar/Desktop/PG3302/goodDns/goodDns.Tests/obj/Debug/net7.0/goodDns.Tests.AssemblyInfo.cs
+/home/joar/Desktop/PG3302/goodDns/goodDns.Tests/obj/Debug/net7.0/goodDns.Tests.csproj.CoreCompileInputs.cache

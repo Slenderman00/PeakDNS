@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "xYfvmtTxQXb2PTSpgf9sn98bdWg5B3EeR3XC0cv9fzoUGRJZorHIeQR8lNErQlA0LCZjd1OdIeLagUpEOUuglA==",
+  "success": true,
+  "projectFilePath": "/home/joar/Desktop/PG3302/goodDns/GoodDns/GoodDns.csproj",
+  "expectedPackageFiles": [
+    "/home/joar/.nuget/packages/microsoft.aspnetcore.app.ref/7.0.13/microsoft.aspnetcore.app.ref.7.0.13.nupkg.sha512"
+  ],
+  "logs": []
+}
