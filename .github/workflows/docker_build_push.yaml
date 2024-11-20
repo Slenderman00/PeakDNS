@@ -8,7 +8,7 @@ on:
       - 'PeakDNS/**'
       - 'PeakDNS.test/**'
       - 'Dockerfile'
-      - '.github/workflows/docker_build_push.yaml'
+      - '.github/workflows/docker_build_push.yml'
 
 jobs:
   build:
