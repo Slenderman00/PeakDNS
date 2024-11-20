@@ -29,6 +29,7 @@ WORKDIR /app
 RUN mkdir zones
 COPY --from=build /app .
 COPY --from=build /src/zones/* /app/zones/
+COPY --from=build /src/PeakDNS/settings.ini /app/settings.ini
 
 RUN adduser -D appuser && \
     chown -R appuser:appuser /app

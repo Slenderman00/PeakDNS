@@ -1,12 +1,10 @@
 $ORIGIN example.com.
 @                      3600 SOA   ns.example.com. (
                               zone-admin.example.com.    ; address of responsible party
-                              0123456789                 ; serial number
+                              2016072701                 ; serial number
                               3600                       ; refresh period
                               600                        ; retry period
                               604800                     ; expire time
                               1800                     ) ; minimum ttl
-                              
-@       IN      NS      ns.example.com.
-@       IN      A       127.0.0.1
-ns      IN      A       127.0.0.1
+                      86400 NS    ns.example.com.
+                         60 A     127.0.0.1
