@@ -3,7 +3,7 @@ using System.Net;
 using PeakDNS.DNS;
 using PeakDNS.DNS.Server;
 using PeakDNS.Storage;
-using PeakDNS.Kubernetes.SimpleKubernetesReader;
+using PeakDNS.Kubernetes;
 
 namespace PeakDNS
 {
@@ -30,7 +30,7 @@ namespace PeakDNS
             }
 
             var reader = new SimpleKubernetesReader(settings);
-            await reader.PrintDomainsAndIPs();
+            reader.PrintDomainsAndIPs();
         }
 
         static void Main(string[] args)

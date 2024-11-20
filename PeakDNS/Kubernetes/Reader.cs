@@ -1,44 +1,49 @@
 using k8s;
 using k8s.Models;
-namespace PeakDNS.Kubernetes 
-{    public class SimpleKubernetesReader
-    {
-        Settings settings;
-        private readonly Kubernetes _client;
-        static Logging<SimpleKubernetesReader> logger;
 
-        public SimpleKubernetesReader(Settings settings = null)
+namespace PeakDNS.Kubernetes
+{
+    public class SimpleKubernetesReader
+    {
+        private readonly Settings settings;
+        private readonly k8s.Kubernetes _client;
+        private static Logging<SimpleKubernetesReader> logger;
+
+        public SimpleKubernetesReader(Settings settings)
         {
-            static Logging<SimpleKubernetesReader> logger = new Logging<SimpleKubernetesReader>(settings.GetSetting("logging", "path", "./log.txt"), logLevel: int.Parse(settings.GetSetting("logging", "logLevel", "5")));
+            this.settings = settings ?? throw new ArgumentNullException(nameof(settings));
+            
+            logger = new Logging<SimpleKubernetesReader>(
+                settings.GetSetting("logging", "path", "./log.txt"),
+                logLevel: int.Parse(settings.GetSetting("logging", "logLevel", "5"))
+            );
+
             var config = KubernetesClientConfiguration.InClusterConfig();
-            _client = new Kubernetes(config);
+            _client = new k8s.Kubernetes(config);
         }
 
-        public async Task PrintDomainsAndIPs()
+        public void PrintDomainsAndIPs()
         {
-            try 
+            try
             {
-                var namespaces = await _client.ListNamespaceAsync();
-                
+                var namespaces = _client.ListNamespace();
                 foreach (var ns in namespaces.Items)
                 {
-                    // Skip if namespace has no labels or no dns domain
-                    if (ns.Metadata.Labels == null || 
+                    if (ns.Metadata?.Labels == null ||
                         !ns.Metadata.Labels.TryGetValue("dns.peak/domain", out string? domain))
                     {
                         continue;
                     }
 
                     Console.WriteLine($"\nDomain: {domain}");
-                    
-                    // Get pods in this namespace
-                    var pods = await _client.ListNamespacedPodAsync(ns.Metadata.Name);
+
+                    var pods = _client.ListNamespacedPod(ns.Metadata.Name);
                     foreach (var pod in pods.Items)
                     {
-                        if (!string.IsNullOrEmpty(pod.Status.PodIP))
+                        if (!string.IsNullOrEmpty(pod.Status?.PodIP))
                         {
-                            logger.Debug($"  Pod: {pod.Metadata.Name}");
-                            logger.Debug($"  IP:  {pod.Status.PodIP}");
+                            logger.Debug($" Pod: {pod.Metadata?.Name}");
+                            logger.Debug($" IP: {pod.Status.PodIP}");
                         }
                     }
                 }
