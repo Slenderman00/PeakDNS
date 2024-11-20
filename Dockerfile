@@ -28,6 +28,7 @@ FROM mcr.microsoft.com/dotnet/runtime:7.0-alpine
 WORKDIR /app
 RUN mkdir zones
 COPY --from=build /app .
+COPY --from=build /src/zones/* /app/zones/
 
 RUN adduser -D appuser && \
     chown -R appuser:appuser /app
