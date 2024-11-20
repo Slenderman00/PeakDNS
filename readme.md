@@ -1,3 +1,4 @@
+[![Docker Build and Push](https://github.com/Slenderman00/PeakDNS/actions/workflows/docker_build_push.yml/badge.svg)](https://github.com/Slenderman00/PeakDNS/actions/workflows/docker_build_push.yml)
 ## GoodDNS
 A Good DNS server
 
