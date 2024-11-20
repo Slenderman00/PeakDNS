@@ -46,6 +46,7 @@ namespace PeakDNS
                 
                 //check if the answer is in the cache
                 if(cache.hasAnswer(_packet)) {
+                    logger.Debug("Anwser is cached")
                     //get the answer from the cache
                     Answer[] answers = cache.getAnswers(_packet);
                     //set the answers
@@ -70,6 +71,7 @@ namespace PeakDNS
 
                     return;
                 }
+                logger.Debug("Anwser is not cached")
 
 
                 //loop trough all zones and check if one of them can answer the question
