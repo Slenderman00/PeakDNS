@@ -5,4 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="KubernetesClient" Version="15.0.1" />
+  </ItemGroup>
 </Project>

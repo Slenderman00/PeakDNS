@@ -1,5 +1,6 @@
-GoodDns.Tests/obj
-GoodDns.Tests/bin/Debug/net7.0
-GoodDns/obj
-GoodDns/bin/Debug/net7.0
+PeakDNS.test/obj
+PeakDNS.test/bin/Debug/net7.0
+PeakDNS/obj
+PeakDNS/bin/Debug/net7.0
 log.txt
+obj/

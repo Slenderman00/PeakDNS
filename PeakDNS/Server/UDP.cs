@@ -2,7 +2,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 
-namespace GoodDns
+namespace PeakDNS
 {
     class UDP
     {

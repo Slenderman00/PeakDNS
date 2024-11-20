@@ -2,7 +2,7 @@
 using System.Text.RegularExpressions;
 using System.Text;
 
-namespace GoodDns.DNS.Server
+namespace PeakDNS.DNS.Server
 {
     public class Record
     {

@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Net;
-using GoodDns.DNS;
-using GoodDns.DNS.Server;
-using GoodDns.Storage;
+using PeakDNS.DNS;
+using PeakDNS.DNS.Server;
+using PeakDNS.Storage;
 
-namespace GoodDns
+namespace PeakDNS
 {
     class Program
     {

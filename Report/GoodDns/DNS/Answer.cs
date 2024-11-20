@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace GoodDns.DNS
+namespace PeakDNS.DNS
 {
     public class Answer {
         Logging<Answer> logger = new Logging<Answer>("./log.txt", logLevel: 5);

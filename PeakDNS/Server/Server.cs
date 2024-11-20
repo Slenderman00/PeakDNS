@@ -1,7 +1,7 @@
 using System.Net.Sockets;
 using System.Net;
 
-namespace GoodDns
+namespace PeakDNS
 {
     public class UniversalClient {
         TcpClient? tcpClient;

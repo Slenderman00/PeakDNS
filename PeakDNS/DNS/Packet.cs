@@ -1,6 +1,6 @@
 using System.Net;
 
-namespace GoodDns.DNS
+namespace PeakDNS.DNS
 {
     public class Packet
     {

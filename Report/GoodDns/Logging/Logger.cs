@@ -1,4 +1,4 @@
-namespace GoodDns {
+namespace PeakDNS {
     public class Logging<T> {
 
         int logLevel;

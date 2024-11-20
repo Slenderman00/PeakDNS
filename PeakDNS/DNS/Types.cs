@@ -1,4 +1,4 @@
-namespace GoodDns.DNS
+namespace PeakDNS.DNS
 {
     public enum OPCodes
     {

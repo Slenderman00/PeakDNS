@@ -1,5 +1,5 @@
 
-namespace GoodDns.DNS
+namespace PeakDNS.DNS
 {
     public class Question
     {

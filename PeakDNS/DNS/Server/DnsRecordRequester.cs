@@ -1,10 +1,10 @@
 using System;
 using System.Net;
 using System.Net.Sockets;
-using GoodDns.DNS;
+using PeakDNS.DNS;
 using System.Threading.Tasks;
 
-namespace GoodDns.DNS.Server
+namespace PeakDNS.DNS.Server
 {
 
     class Transaction

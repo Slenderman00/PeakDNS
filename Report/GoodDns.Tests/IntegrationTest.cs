@@ -1,11 +1,11 @@
-namespace GoodDns.Tests;
+namespace PeakDNS.Tests;
 using System;
 using System.Net;
 using System.Net.Sockets;
 
-using GoodDns;
-using GoodDns.DNS;
-using GoodDns.DNS.Server;
+using PeakDNS;
+using PeakDNS.DNS;
+using PeakDNS.DNS.Server;
 
 [TestFixture]
 public class Tests

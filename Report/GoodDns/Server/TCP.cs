@@ -3,7 +3,7 @@ using System.Net.Sockets;
 using System;
 using System.Threading.Tasks;
 
-namespace GoodDns {
+namespace PeakDNS {
     class TCP {
         Settings settings;
         Logging<TCP> logger;

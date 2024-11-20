@@ -1,4 +1,4 @@
-namespace GoodDns
+namespace PeakDNS
 {
     public class Settings {
         Dictionary<string, Dictionary<string, string>> settings = new Dictionary<string, Dictionary<string, string>>();

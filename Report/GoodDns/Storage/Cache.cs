@@ -1,7 +1,7 @@
-using GoodDns.DNS;
+using PeakDNS.DNS;
 using System.Threading.Tasks;
 
-namespace GoodDns.Storage
+namespace PeakDNS.Storage
 {
 
     class Entry
