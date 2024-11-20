@@ -3,8 +3,6 @@ using System.Net;
 using System.Net.Sockets;
 using PeakDNS.DNS;
 using System.Threading.Tasks;
-using System.Collections.Generic;
-using System.Threading;
 
 namespace PeakDNS.DNS.Server
 {
@@ -62,8 +60,8 @@ namespace PeakDNS.DNS.Server
             responsePacket.Load(responseData, false);
 
             //re-Generate packet, remove this, this is only for illustrative purposes
-            responsePacket.ToBytes();
-            responsePacket.Load(responsePacket.packet, false);
+            // responsePacket.ToBytes();
+            // responsePacket.Load(responsePacket.packet, false);
 
             //log the response
             logger.Success($"Received response with id {responsePacket.GetTransactionId()} from endpoint {responseEndPoint}");
@@ -82,78 +80,55 @@ namespace PeakDNS.DNS.Server
 
     public class RecordRequester
     {
-        private List<Transaction> transactions;
-        private Settings settings;
-        private Thread updateThread;
-        private volatile bool shouldStop;
-        private SemaphoreSlim concurrencyLimit;
+        Transaction[] transactions = new Transaction[100];
+        Settings settings;
+        Task updateTask;
 
-        public RecordRequester(Settings settings, int maxConcurrentRequests = 50)
+        public RecordRequester(Settings settings)
         {
             this.settings = settings;
-            transactions = new List<Transaction>();
-            concurrencyLimit = new SemaphoreSlim(maxConcurrentRequests, maxConcurrentRequests);
         }
 
         public void RequestRecord(Packet packet, IPEndPoint server, Action<Packet> callback)
         {
-            // Acquire a permit from the concurrency limit
-            concurrencyLimit.Wait();
-
-            try
+            //create a new transaction
+            Transaction transaction = new Transaction(packet, server, callback, settings);
+            //add the transaction to an empty slot in the transactions array
+            for (int i = 0; i < transactions.Length; i++)
             {
-                // Create a new transaction
-                Transaction transaction = new Transaction(packet, server, callback, settings);
-
-                // Add the transaction to the list
-                lock (transactions)
+                if (transactions[i] == null || transactions[i].isComplete)
                 {
-                    transactions.Add(transaction);
+                    transactions[i] = transaction;
+                    break;
                 }
-
-                // Start the transaction
-                transaction.Start();
-            }
-            finally
-            {
-                // Release the permit back to the concurrency limit
-                concurrencyLimit.Release();
             }
         }
 
-        private void Update()
+        public void Update()
         {
-            while (!shouldStop)
+            //listen for responses from the server
+            for (int i = 0; i < transactions.Length; i++)
             {
-                // Check for completed transactions
-                lock (transactions)
+                if (transactions[i] != null && !transactions[i].isComplete)
                 {
-                    for (int i = 0; i < transactions.Count; i++)
-                    {
-                        if (transactions[i].IsComplete)
-                        {
-                            transactions.RemoveAt(i);
-                            i--;
-                        }
-                    }
+                    transactions[i].ReceiveResponse();
                 }
-
-                // Sleep for a short time (e.g., 10 milliseconds)
-                Thread.Sleep(10);
             }
+            Thread.Sleep(10);
         }
 
         public void Start()
         {
-            shouldStop = false;
-            updateThread = new Thread(Update);
-            updateThread.Start();
+            updateTask = Task.Run(() => {
+                while(true) {
+                    Update();
+                }
+            });
         }
 
         public void Stop()
         {
-            shouldStop = true;
-            updateThread.Join();
+            updateTask.Dispose();
         }
     }
 }
