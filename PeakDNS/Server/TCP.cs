@@ -25,28 +25,28 @@ namespace PeakDNS {
 
         public void Start() {
             logger.Info("Starting TCP server");
-
-            CancellationToken ct = cts.Token;
             this.running = true;
             listener?.Start();
+            
             listenTask = Task.Run(() => {
                 try {
-                    TcpClient? client;
-                    while((client = listener?.AcceptTcpClient()) != null && (running || !cts.IsCancellationRequested)) {
-                        logger.Info("Client connected from: " + client.Client.RemoteEndPoint);
-                        if(client != null) {
-                            assignTask(client, ct);
+                    while (running && !cts.Token.IsCancellationRequested) {
+                        var client = listener?.AcceptTcpClient();
+                        if (client != null) {
+                            logger.Info("Client connected from: " + client.Client.RemoteEndPoint);
+                            assignTask(client, cts.Token);
                         }
                     }
-                } catch(SocketException) {
-                    logger.Warning("SocketException: listener was stopped");
-                } catch(ObjectDisposedException) {
-                    logger.Warning("ObjectDisposedException: listener was disposed");
+                } catch (Exception ex) {
+                    if (running && !cts.Token.IsCancellationRequested) {
+                        logger.Error($"Error: {ex.Message}");
+                        logger.Error($"Stack trace: {ex.StackTrace}");
+                    }
+                } finally {
+                    Task.WaitAll(Array.FindAll(clientPool, task => task != null));
+                    listener?.Stop();
                 }
-
-                Task.WaitAll(Array.FindAll(clientPool, task => task != null));
-                listener?.Stop();
-            }, ct);
+            });
         }
 
         public void assignTask(TcpClient client, CancellationToken ct) {
