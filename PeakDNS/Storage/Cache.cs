@@ -13,7 +13,7 @@ namespace PeakDNS.Storage
         { 
             get 
             { 
-                return timeToLive <= DateTimeOffset.Now.ToUnixTimeSeconds(); 
+                return DateTimeOffset.Now.ToUnixTimeSeconds() >= timeToLive;
             } 
         }
 
