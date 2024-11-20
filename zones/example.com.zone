@@ -1,15 +1,9 @@
 $ORIGIN example.com.
-$TTL 300
-
-@ IN SOA ns.example.com. admin.example.com. (
-    2024112001  ; Serial
-    3600        ; Refresh
-    1800        ; Retry
-    604800      ; Expire
-    300         ; Minimum TTL
-)
-
-@ IN NS ns.example.com.
+@                      3600 SOA   ns.example.com. (
+                              zone-admin.example.com.    ; address of responsible party
+                              0123456789                 ; serial number
+                              3600                       ; refresh period
+                              600                        ; retry period
+                              604800                     ; expire time
+                              1800                     ) ; minimum ttl
 @ IN A 127.0.0.1
-* IN A 127.0.0.1
-ns IN A 127.0.0.1
