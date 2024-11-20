@@ -121,8 +121,6 @@ namespace PeakDNS.DNS.Server
             updateTask = Task.Run(() => {
                 while(true) {
                     Update();
-                    //sleep for 0.1 second
-                    Thread.Sleep(100);
                 }
             });
         }
