@@ -26,5 +26,6 @@ RUN dotnet publish PeakDNS/PeakDNS.csproj -c Release -o /app --no-restore
 
 FROM mcr.microsoft.com/dotnet/runtime:7.0
 WORKDIR /app
+RUN mkdir zones
 COPY --from=build /app .
 ENTRYPOINT ["dotnet", "PeakDNS.dll"]
