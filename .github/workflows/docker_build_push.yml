@@ -5,7 +5,9 @@ on:
     branches:
       - main
     paths:
-      - '**'
+      - 'GoodDns/**'
+      - 'GoodDns.test/**'
+      - 'Dockerfile'
       - '.github/workflows/docker_build_push.yaml'
 
 jobs:
