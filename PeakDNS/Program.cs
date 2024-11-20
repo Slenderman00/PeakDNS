@@ -127,11 +127,7 @@ namespace PeakDNS
 
             while (true)
             {
-                logger.Info("Enter 'stop' to stop the server");
-                Console.ReadLine();
-                logger.Info("Stopping server");
-                server.Stop();
-                break;
+                Thread.Sleep(Timeout.Infinite);
             }
         }
     }
