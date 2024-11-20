@@ -6,4 +6,7 @@ $ORIGIN example.com.
                               600                        ; retry period
                               604800                     ; expire time
                               1800                     ) ; minimum ttl
-@ IN A 127.0.0.1
+                              
+@       IN      NS      ns.example.com.
+@       IN      A       127.0.0.1
+ns      IN      A       127.0.0.1
