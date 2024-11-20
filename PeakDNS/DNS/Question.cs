@@ -22,6 +22,10 @@ namespace PeakDNS.DNS
 
         public bool IsSame(Question question)
         {
+            logger.Debug("Question: ")
+            question.Print()
+            logger.Debug("Cache: ")
+            this.Print()
             //check if the question is the same
             if (question.domainName == this.domainName && question.type == this.type && question._class == this._class)
             {
