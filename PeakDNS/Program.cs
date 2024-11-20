@@ -3,6 +3,7 @@ using System.Net;
 using PeakDNS.DNS;
 using PeakDNS.DNS.Server;
 using PeakDNS.Storage;
+using PeakDNS.Kubernetes.SimpleKubernetesReader;
 
 namespace PeakDNS
 {
@@ -27,6 +28,9 @@ namespace PeakDNS
                 logger.Info("Loaded zone file: " + files[i]);
                 zones[i].Print();
             }
+
+            var reader = new SimpleKubernetesReader(settings);
+            await reader.PrintDomainsAndIPs();
         }
 
         static void Main(string[] args)
