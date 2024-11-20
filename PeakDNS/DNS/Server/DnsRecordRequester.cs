@@ -80,54 +80,78 @@ namespace PeakDNS.DNS.Server
 
     public class RecordRequester
     {
-        Transaction[] transactions = new Transaction[100];
-        Settings settings;
-        Task updateTask;
+        private List<Transaction> transactions;
+        private Settings settings;
+        private Thread updateThread;
+        private volatile bool shouldStop;
+        private SemaphoreSlim concurrencyLimit;
 
-        public RecordRequester(Settings settings)
+        public RecordRequester(Settings settings, int maxConcurrentRequests = 50)
         {
             this.settings = settings;
+            transactions = new List<Transaction>();
+            concurrencyLimit = new SemaphoreSlim(maxConcurrentRequests, maxConcurrentRequests);
         }
 
         public void RequestRecord(Packet packet, IPEndPoint server, Action<Packet> callback)
         {
-            //create a new transaction
-            Transaction transaction = new Transaction(packet, server, callback, settings);
-            //add the transaction to an empty slot in the transactions array
-            for (int i = 0; i < transactions.Length; i++)
+            // Acquire a permit from the concurrency limit
+            concurrencyLimit.Wait();
+
+            try
             {
-                if (transactions[i] == null || transactions[i].isComplete)
+                // Create a new transaction
+                Transaction transaction = new Transaction(packet, server, callback, settings);
+
+                // Add the transaction to the list
+                lock (transactions)
                 {
-                    transactions[i] = transaction;
-                    break;
+                    transactions.Add(transaction);
                 }
+
+                // Start the transaction
+                transaction.Start();
+            }
+            finally
+            {
+                // Release the permit back to the concurrency limit
+                concurrencyLimit.Release();
             }
         }
 
-        public void Update()
+        private void Update()
         {
-            //listen for responses from the server
-            for (int i = 0; i < transactions.Length; i++)
+            while (!shouldStop)
             {
-                if (transactions[i] != null && !transactions[i].isComplete)
+                // Check for completed transactions
+                lock (transactions)
                 {
-                    transactions[i].ReceiveResponse();
+                    for (int i = 0; i < transactions.Count; i++)
+                    {
+                        if (transactions[i].IsComplete)
+                        {
+                            transactions.RemoveAt(i);
+                            i--;
+                        }
+                    }
                 }
+
+                // Sleep for a short time (e.g., 10 milliseconds)
+                Thread.Sleep(10);
             }
         }
 
         public void Start()
         {
-            updateTask = Task.Run(() => {
-                while(true) {
-                    Update();
-                }
-            });
+            shouldStop = false;
+            updateThread = new Thread(Update);
+            updateThread.Start();
         }
 
         public void Stop()
         {
-            updateTask.Dispose();
+            shouldStop = true;
+            updateThread.Join();
         }
     }
 }
