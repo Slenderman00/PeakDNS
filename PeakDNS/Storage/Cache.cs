@@ -9,12 +9,12 @@ namespace PeakDNS.Storage
         public Question question;
         public Answer[] answers;
         public int timeToLive;
-        public bool isExpired
-        {
-            get
-            {
-                return timeToLive > DateTimeOffset.Now.ToUnixTimeSeconds();
-            }
+        public bool isExpired 
+        { 
+            get 
+            { 
+                return timeToLive <= DateTimeOffset.Now.ToUnixTimeSeconds(); 
+            } 
         }
 
         public Entry(Packet packet)
@@ -46,7 +46,8 @@ namespace PeakDNS.Storage
         public void addRecord(Packet packet)
         {
             //check if the packet contains an answer and a question
-            if(packet.answers.Length >= 1 && packet.questions.Length >= 1) {
+            if (packet.answers.Length >= 1 && packet.questions.Length >= 1)
+            {
                 //add the packet to the cache
                 Entry entry = new Entry(packet);
                 entries.Add(entry);
@@ -57,21 +58,26 @@ namespace PeakDNS.Storage
         {
             Question question = packet.questions[0];
             //loop through all entries
-            for(int i = 0; i < entries.Count; i++) {
+            for (int i = 0; i < entries.Count; i++)
+            {
                 //check if the entry matches the question
-                if(entries[i].question.IsSame(question)) {
+                if (entries[i].question.IsSame(question))
+                {
                     return true;
                 }
             }
             return false;
         }
 
-        public Answer[]? getAnswers(Packet packet) {
+        public Answer[]? getAnswers(Packet packet)
+        {
             Question question = packet.questions[0];
             //loop through all entries
-            for(int i = 0; i < entries.Count; i++) {
+            for (int i = 0; i < entries.Count; i++)
+            {
                 //check if the entry matches the question
-                if(entries[i].question.IsSame(question)) {
+                if (entries[i].question.IsSame(question))
+                {
                     return entries[i].answers;
                 }
             }
@@ -94,8 +100,10 @@ namespace PeakDNS.Storage
 
         public void Start()
         {
-            cacheWorker = Task.Run(() => {
-                while(true) {
+            cacheWorker = Task.Run(() =>
+            {
+                while (true)
+                {
                     Process();
                     //sleep for 0.1 second
                     Thread.Sleep(10);
