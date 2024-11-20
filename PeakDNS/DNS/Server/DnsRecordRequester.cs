@@ -80,7 +80,7 @@ namespace PeakDNS.DNS.Server
 
     public class RecordRequester
     {
-        Transaction[] transactions = new Transaction[10];
+        Transaction[] transactions = new Transaction[100];
         Settings settings;
         Task updateTask;
 
