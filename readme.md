@@ -1,4 +1,4 @@
-[![Docker Build and Push](https://github.com/Slenderman00/PeakDNS/actions/workflows/docker_build_push.yml/badge.svg)](https://github.com/Slenderman00/PeakDNS/actions/workflows/docker_build_push.yaml)
+[![Docker Build and Push](https://github.com/Slenderman00/PeakDNS/actions/workflows/docker_build_push.yaml/badge.svg)](https://github.com/Slenderman00/PeakDNS/actions/workflows/docker_build_push.yaml)
 ## GoodDNS
 A Good DNS server
 
