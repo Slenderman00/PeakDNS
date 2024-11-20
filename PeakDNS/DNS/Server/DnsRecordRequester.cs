@@ -3,6 +3,8 @@ using System.Net;
 using System.Net.Sockets;
 using PeakDNS.DNS;
 using System.Threading.Tasks;
+using System.Collections.Generic;
+using System.Threading;
 
 namespace PeakDNS.DNS.Server
 {
