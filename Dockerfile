@@ -24,8 +24,13 @@ RUN dotnet test --no-restore --logger "trx;LogFileName=test-results.trx" || \
 # Build main project
 RUN dotnet publish PeakDNS/PeakDNS.csproj -c Release -o /app --no-restore
 
-FROM mcr.microsoft.com/dotnet/runtime:7.0
+FROM mcr.microsoft.com/dotnet/runtime:7.0-alpine
 WORKDIR /app
 RUN mkdir zones
 COPY --from=build /app .
+
+RUN adduser -D appuser && \
+    chown -R appuser:appuser /app
+USER appuser
+
 ENTRYPOINT ["dotnet", "PeakDNS.dll"]
