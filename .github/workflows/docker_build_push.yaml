@@ -5,6 +5,7 @@ on:
     branches:
       - main
     paths:
+      - 'zones/**'
       - 'PeakDNS/**'
       - 'PeakDNS.test/**'
       - 'Dockerfile'
