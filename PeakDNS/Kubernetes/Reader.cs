@@ -35,14 +35,13 @@ namespace PeakDNS.Kubernetes
                         continue;
                     }
 
-                    Console.WriteLine($"\nDomain: {domain}");
-
                     var pods = _client.ListNamespacedPod(ns.Metadata.Name);
                     foreach (var pod in pods.Items)
                     {
                         if (!string.IsNullOrEmpty(pod.Status?.PodIP))
                         {
-                            logger.Debug($" Pod: {pod.Metadata?.Name}");
+                            Console.WriteLine($"\nDomain: {pod.Metadata?.GenerateName}.{domain}");
+                            logger.Debug($" Pod: {pod.Metadata?.GenerateName}");
                             logger.Debug($" IP: {pod.Status.PodIP}");
                         }
                     }
