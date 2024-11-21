@@ -1,19 +1,20 @@
 using k8s;
 using k8s.Models;
+using System.Security.Cryptography;
 
 namespace PeakDNS.Kubernetes
 {
-    public class SimpleKubernetesReader
+    public class KubernetesReader
     {
         private readonly Settings settings;
         private readonly k8s.Kubernetes _client;
-        private static Logging<SimpleKubernetesReader> logger;
+        private static Logging<KubernetesReader> logger;
 
-        public SimpleKubernetesReader(Settings settings)
+        public KubernetesReader(Settings settings)
         {
             this.settings = settings ?? throw new ArgumentNullException(nameof(settings));
             
-            logger = new Logging<SimpleKubernetesReader>(
+            logger = new Logging<KubernetesReader>(
                 settings.GetSetting("logging", "path", "./log.txt"),
                 logLevel: int.Parse(settings.GetSetting("logging", "logLevel", "5"))
             );
@@ -40,9 +41,8 @@ namespace PeakDNS.Kubernetes
                     {
                         if (!string.IsNullOrEmpty(pod.Status?.PodIP))
                         {
-                            string podName = pod.Metadata?.Name;
-                            podName = podName.TrimEnd('-').Substring(0, 8);
-                            logger.Debug($"\nDomain: {podName}.{domain}");
+                            string podHash =  GenerateShortHash(pod.Metadata?.Name);
+                            logger.Debug($"Domain: {podHash}.{domain}");
                             logger.Debug($" Pod: {pod.Metadata?.Name}");
                             logger.Debug($" IP: {pod.Status.PodIP}");
                         }
