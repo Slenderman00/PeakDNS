@@ -29,7 +29,7 @@ namespace PeakDNS
                 zones[i].Print();
             }
 
-            var reader = new SimpleKubernetesReader(settings);
+            var reader = new KubernetesReader(settings);
             reader.PrintDomainsAndIPs();
         }
 

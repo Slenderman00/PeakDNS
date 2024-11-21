@@ -1,6 +1,8 @@
 using k8s;
 using k8s.Models;
+using System;
 using System.Security.Cryptography;
+using System.Text;
 
 namespace PeakDNS.Kubernetes
 {
@@ -54,21 +56,22 @@ namespace PeakDNS.Kubernetes
                 logger.Error($"Error reading Kubernetes data: {ex.Message}");
             }
         }
-    }
-}
-
-private static string GenerateShortHash(string input)
-{
-    using (var md5 = MD5.Create())
-    {
-        byte[] inputBytes = Encoding.UTF8.GetBytes(input);
-        byte[] hashBytes = md5.ComputeHash(inputBytes);
         
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < 4; i++)
+        private string GenerateShortHash(string input)
         {
-            sb.Append(hashBytes[i].ToString("x2"));
+            using (var md5 = MD5.Create())
+            {
+                byte[] inputBytes = Encoding.UTF8.GetBytes(input);
+                byte[] hashBytes = md5.ComputeHash(inputBytes);
+                
+                StringBuilder sb = new StringBuilder();
+                for (int i = 0; i < 4; i++)
+                {
+                    sb.Append(hashBytes[i].ToString("x2"));
+                }
+                return sb.ToString();
+            }
         }
-        return sb.ToString();
     }
+
 }
