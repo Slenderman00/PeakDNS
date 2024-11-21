@@ -56,7 +56,7 @@ namespace PeakDNS.Kubernetes
             return question;
         }
 
-        private Answer CreateAnwser(string domainName, string podIP) {
+        private Answer CreateAnswer(string domainName, string podIP) {
             byte[] rData = Utility.ParseIP(podIP);
             Answer answer = new Answer(domainName, RTypes.A, RClasses.IN, 60, (ushort)rData.Length, rData);
             return answer;
@@ -64,13 +64,13 @@ namespace PeakDNS.Kubernetes
 
         private Packet CreatePacket(string domainName, string podIP) {
             Question question = CreateQuestion(domainName, podIP);
-            Answer answer = CreateAnwser(domainName, podIP);
+            Answer answer = CreateAnswer(domainName, podIP);
             Packet packet = new Packet(this.settings);
             packet.AddQuestion(question);
             
             Answer[] answers = new Answer[1];
-            answers.Append(answer);
-            packet.answerCount = 1;
+            answers[0] = answer; 
+            packet.answers = answers;
 
             return packet;
         }
@@ -109,11 +109,11 @@ namespace PeakDNS.Kubernetes
                         Question question = new Question($"{podHash}.{domain}.", RTypes.A, RClasses.IN, this.settings);
                         question.Print();
 
-                        Answer answer = CreateAnwser($"{podHash}.{domain}.", pod.Status.PodIP);
+                        Answer answer = CreateAnswer($"{podHash}.{domain}.", pod.Status.PodIP);
                         answer.Print();
 
-                        //Packet packet = CreatePacket($"{podHash}.{domain}.", pod.Status.PodIP);
-                        //_cache.addRecord(packet);
+                        Packet packet = CreatePacket($"{podHash}.{domain}.", pod.Status.PodIP);
+                        _cache.addRecord(packet);
                         
                     }
                 }
