@@ -101,7 +101,7 @@ namespace PeakDNS.Kubernetes
                             logger.Debug($"Pod: {pod.Metadata?.Name}");
                             logger.Debug($"IP: {pod.Status.PodIP}");
 
-                            Question question = new Question($"{podHash}.{domain}", RTypes.A, RClasses.IN, settings);
+                            // Question question = new Question($"{podHash}.{domain}", RTypes.A, RClasses.IN, settings);
                             // question.Print();
 
                             // Question question = CreateQuestion($"{podHash}.{domain}", pod.Status.PodIP);
