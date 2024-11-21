@@ -40,8 +40,10 @@ namespace PeakDNS.Kubernetes
                     {
                         if (!string.IsNullOrEmpty(pod.Status?.PodIP))
                         {
-                            Console.WriteLine($"\nDomain: {pod.Metadata?.GenerateName}.{domain}");
-                            logger.Debug($" Pod: {pod.Metadata?.GenerateName}");
+                            string podName = pod.Metadata?.Name;
+                            podName = podName.TrimEnd('-').Substring(0, 8);
+                            logger.Debug($"\nDomain: {podName}.{domain}");
+                            logger.Debug($" Pod: {pod.Metadata?.Name}");
                             logger.Debug($" IP: {pod.Status.PodIP}");
                         }
                     }
