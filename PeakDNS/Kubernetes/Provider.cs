@@ -106,12 +106,6 @@ namespace PeakDNS.Kubernetes
                         if (domain == null) throw new ArgumentNullException(nameof(domain));
                         if (settings == null) throw new ArgumentNullException(nameof(settings));
 
-                        Question question = new Question($"{podHash}.{domain}.", RTypes.A, RClasses.IN, this.settings);
-                        question.Print();
-
-                        Answer answer = CreateAnswer($"{podHash}.{domain}.", pod.Status.PodIP);
-                        answer.Print();
-
                         Packet packet = CreatePacket($"{podHash}.{domain}.", pod.Status.PodIP);
                         _cache.addRecord(packet);
                         
