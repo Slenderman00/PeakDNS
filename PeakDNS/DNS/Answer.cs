@@ -3,7 +3,8 @@ using System.Text;
 namespace PeakDNS.DNS
 {
     public class Answer {
-        Logging<Answer> logger = new Logging<Answer>("./log.txt", logLevel: 5);
+        static Settings settings = new Settings();
+        Logging<Answer> logger = new Logging<Answer>(settings.GetSetting("logging", "path", "./log.txt"), logLevel: int.Parse(settings.GetSetting("logging", "logLevel", "5")));
         public string? domainName;
         public RTypes answerType;
         public RClasses answerClass;
