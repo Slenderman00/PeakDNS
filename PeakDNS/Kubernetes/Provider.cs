@@ -52,7 +52,7 @@ namespace PeakDNS.Kubernetes
 
         private Question CreateQuestion(string domainName, string podIP) {
             // A check must be implemented to check if the addess is IPv6 or IPv4 
-            Question question = new Question(domainName, RTypes.A, RClasses.IN);
+            Question question = new Question(domainName, RTypes.A, RClasses.IN, settings);
             return question;
         }
 
@@ -104,8 +104,8 @@ namespace PeakDNS.Kubernetes
                             Question question = CreateQuestion($"{podHash}.{domain}", pod.Status.PodIP);
                             question.Print();
 
-                            Answer answer = CreateAnwser($"{podHash}.{domain}", pod.Status.PodIP);
-                            answer.Print();
+                            // Answer answer = CreateAnwser($"{podHash}.{domain}", pod.Status.PodIP);
+                            // answer.Print();
 
                             // Entry entry = CreateEntry($"{podHash}.{domain}", pod.Status.PodIP);
                             // _cache.entries.Add(entry);
