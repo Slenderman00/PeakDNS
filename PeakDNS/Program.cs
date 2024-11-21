@@ -48,34 +48,34 @@ namespace PeakDNS
                 _packet.Load(packet, isTCP);
                 _packet.Print();
 
-                ////check if the answer is in the kubernetes provider cache
-                //if(provider.cache.hasAnswer(_packet)) {
-                //    logger.Debug("Anwser is cached in the provider cache");
-                //    //get the answer from the cache
-                //    Answer[] answers = provider.cache.getAnswers(_packet);
-                //    //set the answers
-                //    _packet.answers = answers;
-                //    //set the answer count
-                //    _packet.answerCount = (ushort)answers.Length;
-                //    //set the flags
-                //    _packet.flagpole.QR = true;
-                //    _packet.flagpole.AA = false;
-                //    _packet.flagpole.RA = true;
-                //    _packet.flagpole.RD = true;
-                //    _packet.flagpole.TC = false;
-                //    _packet.flagpole.NS = false;
-                //    _packet.flagpole.AD = false;
-                //    _packet.flagpole.CD = false;
-//
-                //    _packet.flagpole.RCode = RCodes.NOERROR;
-//
-                //    _packet.ToBytes(isTCP);
-                //    client.Send(_packet.packet);
-                //    client.Close();
-//
-                //    return;
-                //}
-                //logger.Debug("Anwser is not cached in the provider cache");
+                //check if the answer is in the kubernetes provider cache
+                if(provider.cache.hasAnswer(_packet)) {
+                    logger.Debug("Anwser is cached in the provider cache");
+                    //get the answer from the cache
+                    Answer[] answers = provider.cache.getAnswers(_packet);
+                    //set the answers
+                    _packet.answers = answers;
+                    //set the answer count
+                    _packet.answerCount = (ushort)answers.Length;
+                    //set the flags
+                    _packet.flagpole.QR = true;
+                    _packet.flagpole.AA = false;
+                    _packet.flagpole.RA = true;
+                    _packet.flagpole.RD = true;
+                    _packet.flagpole.TC = false;
+                    _packet.flagpole.NS = false;
+                    _packet.flagpole.AD = false;
+                    _packet.flagpole.CD = false;
+
+                    _packet.flagpole.RCode = RCodes.NOERROR;
+
+                    _packet.ToBytes(isTCP);
+                    client.Send(_packet.packet);
+                    client.Close();
+
+                    return;
+                }
+                logger.Debug("Anwser is not cached in the provider cache");
                 
                 //check if the answer is in the cache
                 if(cache.hasAnswer(_packet)) {

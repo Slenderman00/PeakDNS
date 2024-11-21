@@ -43,6 +43,10 @@ namespace PeakDNS.Storage
             this.settings = settings;
         }
 
+        public void clear() {
+            entries = new List<Entry>();
+        }
+
         public void addRecord(Packet packet)
         {
             //check if the packet contains an answer and a question

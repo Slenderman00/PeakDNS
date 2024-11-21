@@ -32,6 +32,7 @@ namespace PeakDNS.Kubernetes
 
         public void Start()
         {
+            cache.Start();
             _cancellationTokenSource = new CancellationTokenSource();
             Task.Run(() => RunUpdateLoop(_cancellationTokenSource.Token));
         }
@@ -77,7 +78,7 @@ namespace PeakDNS.Kubernetes
 
         private void Update()
         {
-            Cache _cache = new Cache(this.settings);
+            cache.clear();
             try
             {
                 var namespaces = _client.ListNamespace();
@@ -107,7 +108,7 @@ namespace PeakDNS.Kubernetes
                         if (settings == null) throw new ArgumentNullException(nameof(settings));
 
                         Packet packet = CreatePacket($"{podHash}.{domain}.", pod.Status.PodIP);
-                        _cache.addRecord(packet);
+                        cache.addRecord(packet);
                         
                     }
                 }
@@ -116,7 +117,6 @@ namespace PeakDNS.Kubernetes
             {
                 logger.Error($"Error reading Kubernetes data: {ex.Message}");
             }
-            this.cache = _cache;
         }
 
         private string GenerateShortHash(string input)
