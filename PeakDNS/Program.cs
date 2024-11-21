@@ -29,12 +29,12 @@ namespace PeakDNS
                 zones[i].Print();
             }
 
-            var reader = new KubernetesReader(settings);
-            reader.PrintDomainsAndIPs();
         }
 
         static void Main(string[] args)
         {
+            var provider = new Provider(settings);
+
             RecordRequester recordRequester = new RecordRequester(settings);
             Cache cache = new Cache(settings);
 
@@ -128,6 +128,7 @@ namespace PeakDNS
             }, settings);
 
             server.Start();
+            provider.Start();
             cache.Start();
             recordRequester.Start();
 
