@@ -62,7 +62,7 @@ namespace PeakDNS.Kubernetes
             return answer;
         }
 
-        private Entry CreateEntry(string domainName, string podIP) {
+        private Packet CreatePacket(string domainName, string podIP) {
             Question question = CreateQuestion(domainName, podIP);
             Answer answer = CreateAnwser(domainName, podIP);
             Packet packet = new Packet(settings);
@@ -72,9 +72,7 @@ namespace PeakDNS.Kubernetes
             answers.Append(answer);
             packet.answerCount = 1;
 
-            Entry entry = new Entry(packet);
-
-            return entry;
+            return packet;
         }
 
         private void Update()
@@ -111,11 +109,11 @@ namespace PeakDNS.Kubernetes
                         Question question = new Question($"{podHash}.{domain}.", RTypes.A, RClasses.IN, settings);
                         question.Print();
 
-                        Answer answer = CreateAnwser($"{podHash}.{domain}", pod.Status.PodIP);
+                        Answer answer = CreateAnwser($"{podHash}.{domain}.", pod.Status.PodIP);
                         answer.Print();
 
-                        // Entry entry = CreateEntry($"{podHash}.{domain}", pod.Status.PodIP);
-                        // _cache.entries.Add(entry);
+                        Packet packet = CreatePacket($"{podHash}.{domain}.", pod.Status.PodIP);
+                        _cache.addRecord(packet);
                         
                     }
                 }
@@ -124,7 +122,7 @@ namespace PeakDNS.Kubernetes
             {
                 logger.Error($"Error reading Kubernetes data: {ex.Message}");
             }
-            // cache = _cache;
+            cache = _cache;
         }
 
         private string GenerateShortHash(string input)
