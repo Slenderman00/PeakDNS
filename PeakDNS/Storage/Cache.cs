@@ -56,6 +56,7 @@ namespace PeakDNS.Storage
 
         public bool hasAnswer(Packet packet)
         {
+            // Only supports one question
             Question question = packet.questions[0];
             //loop through all entries
             for (int i = 0; i < entries.Count; i++)
