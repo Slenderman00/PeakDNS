@@ -45,8 +45,8 @@ namespace PeakDNS.Kubernetes
                         {
                             string podHash =  GenerateShortHash(pod.Metadata?.Name);
                             logger.Debug($"Domain: {podHash}.{domain}");
-                            logger.Debug($" Pod: {pod.Metadata?.Name}");
-                            logger.Debug($" IP: {pod.Status.PodIP}");
+                            logger.Debug($"Pod: {pod.Metadata?.Name}");
+                            logger.Debug($"IP: {pod.Status.PodIP}");
                         }
                     }
                 }
@@ -56,7 +56,7 @@ namespace PeakDNS.Kubernetes
                 logger.Error($"Error reading Kubernetes data: {ex.Message}");
             }
         }
-        
+
         private string GenerateShortHash(string input)
         {
             using (var md5 = MD5.Create())
