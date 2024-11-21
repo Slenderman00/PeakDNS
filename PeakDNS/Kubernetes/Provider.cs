@@ -32,7 +32,7 @@ namespace PeakDNS.Kubernetes
 
         public void Start()
         {
-            cache.Start();
+            this.cache.Start();
             _cancellationTokenSource = new CancellationTokenSource();
             Task.Run(() => RunUpdateLoop(_cancellationTokenSource.Token));
         }
