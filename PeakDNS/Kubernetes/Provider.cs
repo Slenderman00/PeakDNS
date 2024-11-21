@@ -21,6 +21,7 @@ namespace PeakDNS.Kubernetes
 
         public Provider(Settings settings)
         {
+            cache = new Cache(settings);
             this.settings = settings ?? throw new ArgumentNullException(nameof(settings));
             logger = new Logging<Provider>(
                 settings.GetSetting("logging", "path", "./log.txt"),
@@ -32,7 +33,7 @@ namespace PeakDNS.Kubernetes
 
         public void Start()
         {
-            this.cache.Start();
+            cache.Start();
             _cancellationTokenSource = new CancellationTokenSource();
             Task.Run(() => RunUpdateLoop(_cancellationTokenSource.Token));
         }
