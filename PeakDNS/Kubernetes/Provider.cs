@@ -52,7 +52,7 @@ namespace PeakDNS.Kubernetes
 
         private Question CreateQuestion(string domainName, string podIP) {
             // A check must be implemented to check if the addess is IPv6 or IPv4 
-            Question question = new Question(domainName, RTypes.A, RClasses.IN, settings);
+            Question question = new Question(domainName, RTypes.A, RClasses.IN, this.settings);
             return question;
         }
 
@@ -65,7 +65,7 @@ namespace PeakDNS.Kubernetes
         private Packet CreatePacket(string domainName, string podIP) {
             Question question = CreateQuestion(domainName, podIP);
             Answer answer = CreateAnwser(domainName, podIP);
-            Packet packet = new Packet(settings);
+            Packet packet = new Packet(this.settings);
             packet.AddQuestion(question);
             
             Answer[] answers = new Answer[1];
@@ -77,7 +77,7 @@ namespace PeakDNS.Kubernetes
 
         private void Update()
         {
-            Cache _cache = new Cache(settings);
+            Cache _cache = new Cache(this.settings);
             try
             {
                 var namespaces = _client.ListNamespace();
@@ -106,14 +106,14 @@ namespace PeakDNS.Kubernetes
                         if (domain == null) throw new ArgumentNullException(nameof(domain));
                         if (settings == null) throw new ArgumentNullException(nameof(settings));
 
-                        Question question = new Question($"{podHash}.{domain}.", RTypes.A, RClasses.IN, settings);
+                        Question question = new Question($"{podHash}.{domain}.", RTypes.A, RClasses.IN, this.settings);
                         question.Print();
 
                         Answer answer = CreateAnwser($"{podHash}.{domain}.", pod.Status.PodIP);
                         answer.Print();
 
-                        Packet packet = CreatePacket($"{podHash}.{domain}.", pod.Status.PodIP);
-                        _cache.addRecord(packet);
+                        //Packet packet = CreatePacket($"{podHash}.{domain}.", pod.Status.PodIP);
+                        //_cache.addRecord(packet);
                         
                     }
                 }
@@ -122,7 +122,7 @@ namespace PeakDNS.Kubernetes
             {
                 logger.Error($"Error reading Kubernetes data: {ex.Message}");
             }
-            cache = _cache;
+            this.cache = _cache;
         }
 
         private string GenerateShortHash(string input)
