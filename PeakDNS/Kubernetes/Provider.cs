@@ -21,7 +21,7 @@ namespace PeakDNS.Kubernetes
 
         public Provider(Settings settings)
         {
-            settings = settings ?? throw new ArgumentNullException(nameof(settings));
+            this.settings = settings ?? throw new ArgumentNullException(nameof(settings));
             logger = new Logging<Provider>(
                 settings.GetSetting("logging", "path", "./log.txt"),
                 logLevel: int.Parse(settings.GetSetting("logging", "logLevel", "5"))
