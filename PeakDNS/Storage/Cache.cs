@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 namespace PeakDNS.Storage
 {
 
-    class Entry
+    public class Entry
     {
         public Question question;
         public Answer[] answers;
@@ -34,7 +34,7 @@ namespace PeakDNS.Storage
 
     public class Cache
     {
-        List<Entry> entries = new List<Entry>();
+        public List<Entry> entries = new List<Entry>();
         Task? cacheWorker;
         Settings settings;
 
