@@ -61,7 +61,7 @@ namespace PeakDNS.DNS
 
             //get questions and answers
             GetQuestions(ref currentPosition);
-            GetAnwsers(ref currentPosition);
+            GetAnswers(ref currentPosition);
         }
 
         private void ParseTCP()
@@ -87,7 +87,7 @@ namespace PeakDNS.DNS
             currentPosition += 4;
             //get questions and answers
             GetQuestions(ref currentPosition);
-            GetAnwsers(ref currentPosition);
+            GetAnswers(ref currentPosition);
         }
 
         private void GetQuestions(ref int currentPosition)
@@ -101,7 +101,7 @@ namespace PeakDNS.DNS
             }
         }
 
-        private void GetAnwsers(ref int currentPosition)
+        private void GetAnswers(ref int currentPosition)
         {
             //get answers
             answers = new Answer[answerCount];
@@ -149,10 +149,11 @@ namespace PeakDNS.DNS
             return questionCount;
         }
 
-        public void AddAnswer(string answer)
+        public void AddAnswer(Answer answer)
         {
             //add an answer to the packet
-
+            
+            answers.Append(answer);
             answerCount++;
             //if answers is null, create a new array
         }
