@@ -1,3 +1,4 @@
+using PeakDNS.Storage;
 using k8s;
 using k8s.Models;
 using System;
@@ -18,7 +19,7 @@ namespace PeakDNS.Kubernetes
 
         public Provider(Settings settings)
         {
-            this.settings = settings ?? throw new ArgumentNullException(nameof(settings));
+            settings = settings ?? throw new ArgumentNullException(nameof(settings));
             logger = new Logging<Provider>(
                 settings.GetSetting("logging", "path", "./log.txt"),
                 logLevel: int.Parse(settings.GetSetting("logging", "logLevel", "5"))
@@ -70,19 +71,6 @@ namespace PeakDNS.Kubernetes
                             logger.Debug($"Domain: {podHash}.{domain}");
                             logger.Debug($"Pod: {pod.Metadata?.Name}");
                             logger.Debug($"IP: {pod.Status.PodIP}");
-
-                            var podMetrics = _client.GetNamespacedPodMetricsByLabel(ns.Metadata.Name, $"app={pod.Metadata?.Name}", null);
-                            if (podMetrics.Items != null && podMetrics.Items.Count > 0)
-                            {
-                                var cpuUsage = podMetrics.Items[0].Containers[0].Usage["cpu"];
-                                var memoryUsage = podMetrics.Items[0].Containers[0].Usage["memory"];
-                                logger.Debug($"CPU Usage: {cpuUsage}");
-                                logger.Debug($"Memory Usage: {memoryUsage}");
-                            }
-                            else
-                            {
-                                logger.Debug("No load metrics available for the pod.");
-                            }
                         }
                     }
                 }
