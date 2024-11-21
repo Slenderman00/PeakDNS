@@ -80,8 +80,8 @@ namespace PeakDNS.Kubernetes
         private void Update()
         {
             Cache _cache = new Cache(settings);
-            // try
-            // {
+            try
+            {
                 var namespaces = _client.ListNamespace();
                 foreach (var ns in namespaces.Items)
                 {
@@ -101,17 +101,23 @@ namespace PeakDNS.Kubernetes
                             logger.Debug($"Pod: {pod.Metadata?.Name}");
                             logger.Debug($"IP: {pod.Status.PodIP}");
 
-                            Entry entry = CreateEntry($"{podHash}.{domain}", pod.Status.PodIP);
-                            _cache.entries.Add(entry);
+                            Question question = CreateQuestion($"{podHash}.{domain}", pod.Status.PodIP);
+                            question.Print();
+
+                            Answer answer = CreateAnwser($"{podHash}.{domain}", pod.Status.PodIP);
+                            answer.Print();
+
+                            // Entry entry = CreateEntry($"{podHash}.{domain}", pod.Status.PodIP);
+                            // _cache.entries.Add(entry);
                         }
                     }
                 }
-            // }
-            // catch (Exception ex)
-            // {
-            //     logger.Error($"Error reading Kubernetes data: {ex.Message}");
-            // }
-            cache = _cache;
+            }
+            catch (Exception ex)
+            {
+                logger.Error($"Error reading Kubernetes data: {ex.Message}");
+            }
+            // cache = _cache;
         }
 
         private string GenerateShortHash(string input)
