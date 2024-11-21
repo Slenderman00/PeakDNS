@@ -94,25 +94,28 @@ namespace PeakDNS.Kubernetes
                     var pods = _client.ListNamespacedPod(ns.Metadata.Name);
                     foreach (var pod in pods.Items)
                     {
-                        if (!string.IsNullOrEmpty(pod.Status?.PodIP))
+                        if (pod.Status == null || string.IsNullOrEmpty(pod.Status.PodIP) || pod.Metadata == null)
                         {
-                            string podHash = GenerateShortHash(pod.Metadata?.Name);
-                            logger.Debug($"Domain: {podHash}.{domain}");
-                            logger.Debug($"Pod: {pod.Metadata?.Name}");
-                            logger.Debug($"IP: {pod.Status.PodIP}");
-
-                            Question question = new Question($"{podHash}.{domain}", RTypes.A, RClasses.IN, settings);
-                            // question.Print();
-
-                            // Question question = CreateQuestion($"{podHash}.{domain}", pod.Status.PodIP);
-                            // question.Print();
-
-                            // Answer answer = CreateAnwser($"{podHash}.{domain}", pod.Status.PodIP);
-                            // answer.Print();
-
-                            // Entry entry = CreateEntry($"{podHash}.{domain}", pod.Status.PodIP);
-                            // _cache.entries.Add(entry);
+                            continue;
                         }
+     
+                        string podHash = GenerateShortHash(pod.Metadata?.Name);
+                        logger.Debug($"Domain: {podHash}.{domain}");
+                        logger.Debug($"Pod: {pod.Metadata?.Name}");
+                        logger.Debug($"IP: {pod.Status.PodIP}");
+
+                        Question question = new Question($"{podHash}.{domain}", RTypes.A, RClasses.IN, settings);
+                        question.Print();
+
+                        // Question question = CreateQuestion($"{podHash}.{domain}", pod.Status.PodIP);
+                        // question.Print();
+
+                        // Answer answer = CreateAnwser($"{podHash}.{domain}", pod.Status.PodIP);
+                        // answer.Print();
+
+                        // Entry entry = CreateEntry($"{podHash}.{domain}", pod.Status.PodIP);
+                        // _cache.entries.Add(entry);
+                        
                     }
                 }
             }
