@@ -1,39 +1,59 @@
 using PeakDNS.Storage;
 using PeakDNS.DNS;
+using PeakDNS.DNS.Server;
 using k8s;
 using k8s.Models;
 using System;
+using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using PeakDNS.DNS.Server;
 
 namespace PeakDNS.Kubernetes
 {
     public class Provider
     {
-        public Cache cache;
         private readonly Settings settings;
         private readonly k8s.Kubernetes _client;
         private static Logging<Provider> logger;
         private CancellationTokenSource _cancellationTokenSource;
+        public BIND bind;
+        
+        // Track current records for cleanup
+        private readonly ConcurrentDictionary<string, Record> _currentRecords = new();
 
         public Provider(Settings settings)
         {
-            cache = new Cache(settings);
-            this.settings = settings ?? throw new ArgumentNullException(nameof(settings));
+            this.settings = settings;
+
+            // Initialize BIND with wildcard matching
+            bind = new BIND(settings, "peak.");
+
+            bind.SetSOARecord(
+                primaryNameserver: "ns1.peak.",
+                hostmaster: "admin.peak.",
+                serial: "2024032601",
+                refresh: "3600",
+                retry: "1800",
+                expire: "604800",
+                ttl: 3600,
+                minimumTTL: 300
+            );
+            
             logger = new Logging<Provider>(
                 settings.GetSetting("logging", "path", "./log.txt"),
                 logLevel: int.Parse(settings.GetSetting("logging", "logLevel", "5"))
             );
+
+            logger.Info("Provider initialized with SOA record");
+
             var config = KubernetesClientConfiguration.InClusterConfig();
             _client = new k8s.Kubernetes(config);
         }
 
         public void Start()
         {
-            cache.Start();
             _cancellationTokenSource = new CancellationTokenSource();
             Task.Run(() => RunUpdateLoop(_cancellationTokenSource.Token));
         }
@@ -47,42 +67,26 @@ namespace PeakDNS.Kubernetes
         {
             while (!cancellationToken.IsCancellationRequested)
             {
-                Update();
+                try
+                {
+                    await Update();
+                }
+                catch (Exception ex)
+                {
+                    logger.Error($"Error in update loop: {ex}");
+                }
                 await Task.Delay(TimeSpan.FromSeconds(30), cancellationToken);
             }
         }
 
-        private Question CreateQuestion(string domainName, string podIP) {
-            // A check must be implemented to check if the addess is IPv6 or IPv4 
-            Question question = new Question(domainName, RTypes.A, RClasses.IN, this.settings);
-            return question;
-        }
-
-        private Answer CreateAnswer(string domainName, string podIP) {
-            byte[] rData = Utility.ParseIP(podIP);
-            Answer answer = new Answer(domainName, RTypes.A, RClasses.IN, 60, (ushort)rData.Length, rData);
-            return answer;
-        }
-
-        private Packet CreatePacket(string domainName, string podIP) {
-            Question question = CreateQuestion(domainName, podIP);
-            Answer answer = CreateAnswer(domainName, podIP);
-            Packet packet = new Packet(this.settings);
-            packet.AddQuestion(question);
-            
-            Answer[] answers = new Answer[1];
-            answers[0] = answer; 
-            packet.answers = answers;
-
-            return packet;
-        }
-
-        private void Update()
+        private async Task Update()
         {
-            cache.clear();
             try
             {
-                var namespaces = _client.ListNamespace();
+                // Create new records set
+                var newRecords = new ConcurrentDictionary<string, Record>();
+
+                var namespaces = await _client.ListNamespaceAsync();
                 foreach (var ns in namespaces.Items)
                 {
                     if (ns.Metadata?.Labels == null ||
@@ -91,33 +95,80 @@ namespace PeakDNS.Kubernetes
                         continue;
                     }
 
-                    var pods = _client.ListNamespacedPod(ns.Metadata.Name);
+                    var pods = await _client.ListNamespacedPodAsync(ns.Metadata.Name);
                     foreach (var pod in pods.Items)
                     {
-                        if (pod.Status == null || string.IsNullOrEmpty(pod.Status.PodIP) || pod.Metadata == null)
+                        if (pod.Status == null || 
+                            string.IsNullOrEmpty(pod.Status.PodIP) || 
+                            pod.Metadata == null ||
+                            string.IsNullOrEmpty(pod.Metadata.Name))
                         {
                             continue;
                         }
-     
-                        string podHash = GenerateShortHash(pod.Metadata?.Name);
-                        logger.Debug($"Domain: {podHash}.{domain}");
-                        logger.Debug($"Pod: {pod.Metadata?.Name}");
-                        logger.Debug($"IP: {pod.Status.PodIP}");
 
-                        if (podHash == null) throw new ArgumentNullException(nameof(podHash));
-                        if (domain == null) throw new ArgumentNullException(nameof(domain));
-                        if (settings == null) throw new ArgumentNullException(nameof(settings));
+                        try
+                        {
+                            string podHash = GenerateShortHash(pod.Metadata.Name);
+                            string fqdn = $"{podHash}.{domain}.";
+                            
+                            logger.Debug($"Updating record - FQDN: {fqdn}, Pod: {pod.Metadata.Name}, IP: {pod.Status.PodIP}");
 
-                        Packet packet = CreatePacket($"{podHash}.{domain}.", pod.Status.PodIP);
-                        cache.addRecord(packet);
-                        
+                            var record = Record.CreateARecord(settings, fqdn, 300, pod.Status.PodIP);
+                            newRecords.TryAdd(fqdn, record);
+
+                            // Add or update record in BIND
+                            if (!_currentRecords.TryGetValue(fqdn, out var existingRecord))
+                            {
+                                bind.AddRecord(record);
+                                logger.Debug($"Added new record for {fqdn}");
+                            }
+                            else if (!CompareRecords(existingRecord, record))
+                            {
+                                // Remove old record and add new one if IP changed
+                                bind.RemoveRecord(existingRecord);
+                                bind.AddRecord(record);
+                                logger.Debug($"Updated record for {fqdn}");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            logger.Error($"Error processing pod {pod.Metadata.Name}: {ex}");
+                        }
                     }
+                }
+
+                // Remove records that no longer exist
+                foreach (var oldRecord in _currentRecords)
+                {
+                    if (!newRecords.ContainsKey(oldRecord.Key))
+                    {
+                        bind.RemoveRecord(oldRecord.Value);
+                        logger.Debug($"Removed record for {oldRecord.Key}");
+                    }
+                }
+
+                // Update current records
+                _currentRecords.Clear();
+                foreach (var record in newRecords)
+                {
+                    _currentRecords.TryAdd(record.Key, record.Value);
                 }
             }
             catch (Exception ex)
             {
                 logger.Error($"Error reading Kubernetes data: {ex.Message}");
+                throw;
             }
+        }
+
+        private bool CompareRecords(Record r1, Record r2)
+        {
+            if (r1.type != r2.type) return false;
+            if (r1.name != r2.name) return false;
+            if (r1.data == null || r2.data == null) return false;
+            if (r1.data.Length != r2.data.Length) return false;
+            
+            return r1.data.SequenceEqual(r2.data);
         }
 
         private string GenerateShortHash(string input)
