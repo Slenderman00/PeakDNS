@@ -13,9 +13,25 @@ namespace PeakDNS {
             this.logLevel = logLevel;
         }
 
-        public void Error(string message) {
+        public void Error(string message, Exception ex = null)
+        {
             if (logLevel < 5) return;
+            
             LogPrint(message, ConsoleColor.Red, "ERROR");
+            
+            if (ex != null)
+            {
+                LogPrint($"Exception: {ex.Message}", ConsoleColor.Red, "ERROR");
+                if (ex.StackTrace != null)
+                {
+                    LogPrint($"Stack Trace: {ex.StackTrace}", ConsoleColor.Red, "ERROR");
+                }
+                
+                if (ex.InnerException != null)
+                {
+                    LogPrint($"Inner Exception: {ex.InnerException.Message}", ConsoleColor.Red, "ERROR");
+                }
+            }
         }
 
         public void Warning(string message) {
