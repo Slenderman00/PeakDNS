@@ -38,15 +38,29 @@ namespace PeakDNS.DNS
 
         public void Print()
         {
-            //print the packet
-            logger.Debug("Domain Name: " + domainName);
-            logger.Debug("Question Type: " + Enum.GetName(typeof(RTypes), type));
-            logger.Debug("Question Class: " + Enum.GetName(typeof(RClasses), _class));
+            logger.Debug($"Domain Name: {domainName}");
+            logger.Debug($"Question Type: {type}");
+            logger.Debug($"Question Class: {_class}");
         }
         public string GetDomainName()
         {
             //get the domain name
             return domainName;
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (obj is not Question other)
+                return false;
+
+            return domainName.Equals(other.domainName, StringComparison.OrdinalIgnoreCase) &&
+                type == other.type &&
+                _class == other._class;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(domainName.ToLowerInvariant(), type, _class);
         }
 
         public ushort GetQType()
