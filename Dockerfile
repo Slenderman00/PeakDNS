@@ -18,8 +18,7 @@ RUN mkdir -p PeakDNS.test/bin/Debug/net7.0/ && \
     cp PeakDNS.test/settings.ini PeakDNS.test/bin/Debug/net7.0/settings.ini
 
 # Run tests
-RUN dotnet test --no-restore --logger "trx;LogFileName=test-results.trx" || \
-    (cat TestResults/test-results.trx && exit 1)
+RUN dotnet test
 
 # Build main project
 RUN dotnet publish PeakDNS/PeakDNS.csproj -c Release -o /app --no-restore
