@@ -359,16 +359,30 @@ namespace PeakDNS.Kubernetes
 
         private async Task HandleLoadBalancing(V1Namespace ns, V1PodList pods, string domain, string labelValue, ConcurrentDictionary<string, Record> newRecords)
         {
+            logger.Debug($"Starting load balancing for namespace {ns.Metadata.Name} with domain {domain}");
+
             var prometheusQuery = await GetLoadBalanceExpression(labelValue, ns.Metadata.Name);
-            if (string.IsNullOrEmpty(prometheusQuery)) return;
+            if (string.IsNullOrEmpty(prometheusQuery))
+            {
+                logger.Warning($"Empty Prometheus query for namespace {ns.Metadata.Name}");
+                return;
+            }
 
             var clusterType = ns.Metadata.Labels.TryGetValue("cluster-type", out string type) ? type : "default";
-            if (!ValidateClusterType(domain, clusterType)) return;
+            logger.Debug($"Cluster type for domain {domain}: {clusterType}");
+
+            if (!ValidateClusterType(domain, clusterType))
+            {
+                logger.Warning($"Invalid cluster type {clusterType} for domain {domain}");
+                return;
+            }
 
             var mode = (ns.Metadata.Annotations != null &&
-                       ns.Metadata.Annotations.TryGetValue("dns.peak/loadbalance-mode", out var modeValue))
+                        ns.Metadata.Annotations.TryGetValue("dns.peak/loadbalance-mode", out var modeValue))
                 ? modeValue.ToLowerInvariant()
                 : _settings.LoadBalancing.DefaultMode;
+
+            logger.Info($"Load balancing mode for {domain}: {mode}");
 
             if (mode == "excludeoverloaded")
             {
@@ -377,23 +391,41 @@ namespace PeakDNS.Kubernetes
                     : _settings.LoadBalancing.DefaultOverloadThreshold.ToString();
 
                 var overloadThreshold = double.Parse(overloadThresholdStr);
+                logger.Debug($"Overload threshold for {domain}: {overloadThreshold}");
+
                 var metrics = await GetPodMetrics(pods, prometheusQuery, ns.Metadata.Name);
-                if (!metrics.Any()) return;
+                if (!metrics.Any())
+                {
+                    logger.Warning($"No metrics retrieved for {domain}");
+                    return;
+                }
 
                 var avgLoad = metrics.Average(m => m.metric);
                 var threshold = avgLoad * overloadThreshold;
+                logger.Info($"Average load: {avgLoad:F2}, Threshold: {threshold:F2}");
 
-                foreach (var pod in metrics.Where(m => m.metric <= threshold))
+                var nonOverloaded = metrics.Where(m => m.metric <= threshold).ToList();
+                logger.Info($"Found {nonOverloaded.Count} non-overloaded pods out of {metrics.Count} total");
+
+                foreach (var pod in nonOverloaded)
                 {
                     await ProcessRecord(newRecords, $"{domain}.", pod.podIP);
+                    logger.Debug($"Added record for pod {pod.podIP} with load {pod.metric:F2}");
                 }
             }
             else
             {
+                logger.Debug($"Using single best pod selection for {domain}");
                 var bestPodIp = await GetBestPodIp(pods, prometheusQuery, ns.Metadata.Name, clusterType);
+
                 if (bestPodIp != null)
                 {
                     await ProcessRecord(newRecords, $"{domain}.", bestPodIp);
+                    logger.Info($"Selected best pod {bestPodIp} for domain {domain}");
+                }
+                else
+                {
+                    logger.Warning($"No suitable pod found for {domain}");
                 }
             }
         }
