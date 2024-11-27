@@ -152,7 +152,7 @@ namespace PeakDNS.DNS
         public void AddAnswer(Answer answer)
         {
             //add an answer to the packet
-            
+
             answers.Append(answer);
             answerCount++;
             //if answers is null, create a new array
@@ -296,27 +296,40 @@ namespace PeakDNS.DNS
 
         public void Print()
         {
-            //print the packet
-            logger.Debug("Transaction ID: " + transactionId);
-
-            //print the flags
-            flagpole.Print();
-
-            logger.Debug("Question Count: " + questionCount);
-            logger.Debug("Answer Count: " + answerCount);
-            for (int i = 1; i <= questionCount; i++)
+            try
             {
-                logger.Debug("Question: " + i);
-                questions[i-1].Print();
-            }
-            for (int i = 1; i <= answerCount; i++)
-            {
-                logger.Debug("Answer: " + i);
-                answers[i-1].Print();
-            }
+                // Print transaction ID and flags
+                logger.Debug($"Transaction ID: {transactionId}");
+                flagpole?.Print();
 
-            //print packet data as hex
-            //logger.Debug(BitConverter.ToString(packet).Replace("-", " "));
+                // Print counts
+                logger.Debug($"Question Count: {questionCount}");
+                logger.Debug($"Answer Count: {answerCount}");
+
+                // Safely print questions
+                if (questions != null)
+                {
+                    for (int i = 0; i < questionCount && i < questions.Length; i++)
+                    {
+                        logger.Debug($"Question: {i + 1}");
+                        questions[i]?.Print();
+                    }
+                }
+
+                // Safely print answers
+                if (answers != null)
+                {
+                    for (int i = 0; i < answerCount && i < answers.Length; i++)
+                    {
+                        logger.Debug($"Answer: {i + 1}");
+                        answers[i]?.Print();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.Error($"Error printing DNS packet: {ex.Message}");
+            }
         }
     }
 }

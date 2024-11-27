@@ -1,14 +1,8 @@
-using PeakDNS.Storage;
-using PeakDNS.DNS;
 using PeakDNS.DNS.Server;
 using k8s;
-using k8s.Models;
-using System;
 using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace PeakDNS.Kubernetes
 {
@@ -19,15 +13,14 @@ namespace PeakDNS.Kubernetes
         private static Logging<Provider> logger;
         private CancellationTokenSource _cancellationTokenSource;
         public BIND bind;
-
-        // Track current records for cleanup
+        private PrometheusClient _prometheusClient;
+        private readonly ConcurrentDictionary<string, string> _clusterTypes = new();
         private readonly ConcurrentDictionary<string, Record> _currentRecords = new();
+        private readonly ConcurrentDictionary<string, string> _reservedTopDomains = new();
 
         public Provider(Settings settings)
         {
             this.settings = settings;
-
-            // Initialize BIND with wildcard matching
             bind = new BIND(settings, "peak.");
 
             bind.SetSOARecord(
@@ -50,10 +43,67 @@ namespace PeakDNS.Kubernetes
 
             var config = KubernetesClientConfiguration.InClusterConfig();
             _client = new k8s.Kubernetes(config);
+            _prometheusClient = new PrometheusClient(settings);
         }
+        private async Task<string> GetLoadBalanceExpression(string labelValue, string namespaceName)
+        {
+            try
+            {
+                const string PREFIX = "configmap.";
+                if (!labelValue.StartsWith(PREFIX))
+                {
+                    return labelValue;
+                }
 
+                // Split the string into exactly 2 parts after removing prefix
+                var parts = labelValue.Substring(PREFIX.Length).Split('.');
+                if (parts.Length != 2)
+                {
+                    logger.Error($"Invalid configmap reference format: {labelValue}, expected format: configmap.name.key");
+                    return string.Empty;
+                }
+
+                var configMapName = parts[0];
+                var configMapKey = parts[1];
+
+                logger.Debug($"Loading from ConfigMap - Name: '{configMapName}', Key: '{configMapKey}', Namespace: '{namespaceName}'");
+
+                try
+                {
+                    var configMap = await _client.ReadNamespacedConfigMapAsync(
+                        name: configMapName,
+                        namespaceParameter: namespaceName);
+
+                    if (configMap == null)
+                    {
+                        logger.Error($"ConfigMap '{configMapName}' not found in namespace '{namespaceName}'");
+                        return string.Empty;
+                    }
+
+                    if (!configMap.Data.TryGetValue(configMapKey, out var expression))
+                    {
+                        logger.Error($"Key '{configMapKey}' not found in ConfigMap '{configMapName}'");
+                        return string.Empty;
+                    }
+
+                    logger.Debug($"Successfully loaded expression from ConfigMap '{configMapName}/{configMapKey}'");
+                    return expression;
+                }
+                catch (Exception ex)
+                {
+                    logger.Error($"Error accessing ConfigMap: {ex.Message}");
+                    return string.Empty;
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.Error($"Error processing ConfigMap expression: {ex.Message}\nStack trace: {ex.StackTrace}");
+                return string.Empty;
+            }
+        }
         public void Start()
         {
+            _prometheusClient.Initialize();
             _cancellationTokenSource = new CancellationTokenSource();
             Task.Run(() => RunUpdateLoop(_cancellationTokenSource.Token));
         }
@@ -79,8 +129,6 @@ namespace PeakDNS.Kubernetes
             }
         }
 
-        private readonly ConcurrentDictionary<string, string> _reservedTopDomains = new();
-
         private async Task Update()
         {
             try
@@ -99,7 +147,6 @@ namespace PeakDNS.Kubernetes
                         continue;
                     }
 
-                    // Log all labels for debugging
                     foreach (var label in ns.Metadata.Labels)
                     {
                         logger.Debug($"Namespace {ns.Metadata.Name} label: {label.Key}={label.Value}");
@@ -121,13 +168,11 @@ namespace PeakDNS.Kubernetes
                         logger.Debug($"Parsed only-top to: {isTopLevelRequest}");
                     }
 
-                    // If it's a top level request, check if domain is already reserved
                     if (isTopLevelRequest)
                     {
                         logger.Debug($"Processing top-level domain request for {domain}");
                         if (_reservedTopDomains.TryGetValue(domain, out string? existingNs))
                         {
-                            logger.Debug($"Domain {domain} is already reserved by namespace {existingNs}");
                             if (existingNs != ns.Metadata.Name)
                             {
                                 logger.Warning($"Namespace {ns.Metadata.Name} attempted to register reserved top domain {domain} (owned by {existingNs})");
@@ -149,6 +194,69 @@ namespace PeakDNS.Kubernetes
                     var pods = await _client.ListNamespacedPodAsync(ns.Metadata.Name);
                     logger.Debug($"Found {pods.Items.Count} pods in namespace {ns.Metadata.Name}");
 
+                    logger.Debug($"Checking for loadbalance label: {ns.Metadata.Labels.ContainsKey("dns.peak/loadbalance")}");
+                    if (ns.Metadata.Labels.TryGetValue("dns.peak/loadbalance", out string? labelValue))
+                    {
+                        var prometheusQuery = await GetLoadBalanceExpression(labelValue, ns.Metadata.Name);
+                        if (string.IsNullOrEmpty(prometheusQuery))
+                        {
+                            logger.Warning($"Failed to get loadbalance expression for namespace {ns.Metadata.Name}");
+                            continue;
+                        }
+
+                        var clusterType = ns.Metadata.Labels.TryGetValue("cluster-type", out string type) ? type : "default";
+
+                        if (!_clusterTypes.TryGetValue(domain, out string existingType))
+                        {
+                            _clusterTypes.TryAdd(domain, clusterType);
+                        }
+                        else if (existingType != clusterType)
+                        {
+                            logger.Warning($"Skipping load balancing for domain {domain} due to cluster type mismatch. Existing: {existingType}, Current: {clusterType}");
+                            continue;
+                        }
+
+                        var bestMetric = 0.0;
+                        string? bestPodIp = pods.Items[0].Status.PodIP;
+
+                        foreach (var pod in pods.Items)
+                        {
+                            if (pod.Status?.PodIP == null || pod.Metadata?.Name == null)
+                            {
+                                LogPodSkipReason(pod);
+                                continue;
+                            }
+
+                            var query = prometheusQuery
+                                .Replace("%pod-name%", pod.Metadata.Name)
+                                .Replace("%namespace%", ns.Metadata.Name)
+                                .Replace("%cluster-name%", clusterType);
+
+                            try 
+                            {
+                                var metric = await _prometheusClient.GetMetricValueAsync(query);
+                                var metricValue = metric.HasValue ? metric.Value : 0;
+                                
+                                if (metricValue >= bestMetric)
+                                {
+                                    bestMetric = metricValue;
+                                    bestPodIp = pod.Status.PodIP;
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                logger.Warning($"Failed to get metric for pod {pod.Metadata.Name}: {ex.Message}");
+                            }
+                        }
+
+                        if (bestPodIp != null)
+                        {
+                            var fqdn = $"{domain}.";
+                            await ProcessRecord(newRecords, fqdn, bestPodIp);
+                        }
+                        continue;
+                    }
+
                     foreach (var pod in pods.Items)
                     {
                         if (pod.Status == null ||
@@ -156,81 +264,14 @@ namespace PeakDNS.Kubernetes
                             pod.Metadata == null ||
                             string.IsNullOrEmpty(pod.Metadata.Name))
                         {
-                            if (pod.Status == null)
-                            {
-                                logger.Debug($"Skipping pod {pod.Metadata?.Name}: Status is null");
-                                continue;
-                            }
-                            if (string.IsNullOrEmpty(pod.Status.PodIP))
-                            {
-                                logger.Debug($"Skipping pod {pod.Metadata?.Name}: PodIP is null or empty");
-                                continue;
-                            }
-                            if (pod.Metadata == null)
-                            {
-                                logger.Debug($"Skipping pod: Metadata is null");
-                                continue;
-                            }
-                            if (string.IsNullOrEmpty(pod.Metadata.Name))
-                            {
-                                logger.Debug($"Skipping pod: Pod name is null or empty");
-                                continue;
-                            }
-
+                            LogPodSkipReason(pod);
                             continue;
                         }
 
                         try
                         {
-                            string fqdn;
-                            // Remove any trailing dots from the domain first
-                            domain = domain.TrimEnd('.');
-
-                            // For top-level domains, don't add any prefix regardless of .peak
-                            if (isTopLevelRequest)
-                            {
-                                // Ensure we have .peak at the end
-                                if (!domain.EndsWith(".peak", StringComparison.OrdinalIgnoreCase))
-                                {
-                                    domain = $"{domain}.peak";
-                                }
-                                fqdn = $"{domain}.";
-                            }
-                            else
-                            {
-                                // For non-top-level, add hash prefix and ensure .peak suffix
-                                var baseDomain = domain.EndsWith(".peak", StringComparison.OrdinalIgnoreCase)
-                                    ? domain
-                                    : $"{domain}.peak";
-                                fqdn = $"{GenerateShortHash(pod.Metadata.Name)}.{baseDomain}.";
-                            }
-
-                            logger.Debug($"Creating record - FQDN: {fqdn}, Pod: {pod.Metadata.Name}, IP: {pod.Status.PodIP}, TopLevel: {isTopLevelRequest}");
-
-                            var record = Record.CreateARecord(settings, fqdn, 300, pod.Status.PodIP);
-                            logger.Debug($"Created A record: {fqdn} -> {pod.Status.PodIP}");
-
-                            if (newRecords.TryAdd(fqdn, record))
-                            {
-                                logger.Debug($"Added new record to collection: {fqdn}");
-                            }
-
-                            // Add or update record in BIND
-                            if (!_currentRecords.TryGetValue(fqdn, out var existingRecord))
-                            {
-                                bind.AddRecord(record);
-                                logger.Debug($"Added new record to BIND: {fqdn}");
-                            }
-                            else if (!CompareRecords(existingRecord, record))
-                            {
-                                bind.RemoveRecord(existingRecord);
-                                bind.AddRecord(record);
-                                logger.Debug($"Updated existing record in BIND: {fqdn}");
-                            }
-                            else
-                            {
-                                logger.Debug($"Record unchanged in BIND: {fqdn}");
-                            }
+                            string fqdn = BuildFQDN(domain, pod.Metadata.Name, isTopLevelRequest);
+                            await ProcessRecord(newRecords, fqdn, pod.Status.PodIP);
                         }
                         catch (Exception ex)
                         {
@@ -239,22 +280,8 @@ namespace PeakDNS.Kubernetes
                     }
                 }
 
-                // Clean up old records
-                foreach (var oldRecord in _currentRecords)
-                {
-                    if (!newRecords.ContainsKey(oldRecord.Key))
-                    {
-                        bind.RemoveRecord(oldRecord.Value);
-                        logger.Debug($"Removed old record: {oldRecord.Key}");
-                    }
-                }
-
-                // Update current records
-                _currentRecords.Clear();
-                foreach (var record in newRecords)
-                {
-                    _currentRecords.TryAdd(record.Key, record.Value);
-                }
+                CleanupOldRecords(newRecords);
+                UpdateCurrentRecords(newRecords);
 
                 logger.Debug($"Update completed. Total active records: {_currentRecords.Count}");
             }
@@ -262,6 +289,85 @@ namespace PeakDNS.Kubernetes
             {
                 logger.Error($"Error reading Kubernetes data: {ex.Message}");
                 throw;
+            }
+        }
+
+        private void LogPodSkipReason(k8s.Models.V1Pod pod)
+        {
+            if (pod.Status == null)
+                logger.Debug($"Skipping pod {pod.Metadata?.Name}: Status is null");
+            else if (string.IsNullOrEmpty(pod.Status.PodIP))
+                logger.Debug($"Skipping pod {pod.Metadata?.Name}: PodIP is null or empty");
+            else if (pod.Metadata == null)
+                logger.Debug($"Skipping pod: Metadata is null");
+            else if (string.IsNullOrEmpty(pod.Metadata.Name))
+                logger.Debug($"Skipping pod: Pod name is null or empty");
+        }
+
+        private string BuildFQDN(string domain, string podName, bool isTopLevelRequest)
+        {
+            domain = domain.TrimEnd('.');
+
+            if (isTopLevelRequest)
+            {
+                if (!domain.EndsWith(".peak", StringComparison.OrdinalIgnoreCase))
+                {
+                    domain = $"{domain}.peak";
+                }
+                return $"{domain}.";
+            }
+
+            var baseDomain = domain.EndsWith(".peak", StringComparison.OrdinalIgnoreCase)
+                ? domain
+                : $"{domain}.peak";
+            return $"{GenerateShortHash(podName)}.{baseDomain}.";
+        }
+
+        private async Task ProcessRecord(ConcurrentDictionary<string, Record> newRecords, string fqdn, string podIP)
+        {
+            var record = Record.CreateARecord(settings, fqdn, 300, podIP);
+            logger.Debug($"Created A record: {fqdn} -> {podIP}");
+
+            if (newRecords.TryAdd(fqdn, record))
+            {
+                logger.Debug($"Added new record to collection: {fqdn}");
+            }
+
+            if (!_currentRecords.TryGetValue(fqdn, out var existingRecord))
+            {
+                bind.AddRecord(record);
+                logger.Debug($"Added new record to BIND: {fqdn}");
+            }
+            else if (!CompareRecords(existingRecord, record))
+            {
+                bind.RemoveRecord(existingRecord);
+                bind.AddRecord(record);
+                logger.Debug($"Updated existing record in BIND: {fqdn}");
+            }
+            else
+            {
+                logger.Debug($"Record unchanged in BIND: {fqdn}");
+            }
+        }
+
+        private void CleanupOldRecords(ConcurrentDictionary<string, Record> newRecords)
+        {
+            foreach (var oldRecord in _currentRecords)
+            {
+                if (!newRecords.ContainsKey(oldRecord.Key))
+                {
+                    bind.RemoveRecord(oldRecord.Value);
+                    logger.Debug($"Removed old record: {oldRecord.Key}");
+                }
+            }
+        }
+
+        private void UpdateCurrentRecords(ConcurrentDictionary<string, Record> newRecords)
+        {
+            _currentRecords.Clear();
+            foreach (var record in newRecords)
+            {
+                _currentRecords.TryAdd(record.Key, record.Value);
             }
         }
 
