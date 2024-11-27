@@ -7,54 +7,9 @@ using k8s.Models;
 
 namespace PeakDNS.Kubernetes
 {
-    public class ProviderSettings
-    {
-        public DnsSettings Dns { get; set; }
-        public SoaSettings Soa { get; set; }
-        public LoadBalancingSettings LoadBalancing { get; set; }
-        public HashSettings Hash { get; set; }
-        public LoggingSettings Logging { get; set; }
-
-        public class DnsSettings
-        {
-            public string Prefix { get; set; } = "peak.";
-            public int UpdateInterval { get; set; } = 30;
-            public int RecordTTL { get; set; } = 300;
-        }
-
-        public class SoaSettings
-        {
-            public string Serial { get; set; } = "2024032601";
-            public int Refresh { get; set; } = 3600;
-            public int Retry { get; set; } = 1800;
-            public int Expire { get; set; } = 604800;
-            public int TTL { get; set; } = 3600;
-            public int MinimumTTL { get; set; } = 300;
-            public string PrimaryNameserver { get; set; } = "ns1.peak.";
-            public string Hostmaster { get; set; } = "admin.peak.";
-        }
-
-        public class LoadBalancingSettings
-        {
-            public double DefaultOverloadThreshold { get; set; } = 1.5;
-            public string DefaultMode { get; set; } = "singlebest";
-        }
-
-        public class HashSettings
-        {
-            public int Length { get; set; } = 4;
-        }
-
-        public class LoggingSettings
-        {
-            public string Path { get; set; } = "./log.txt";
-            public int LogLevel { get; set; } = 5;
-        }
-    }
 
     public class Provider
     {
-        private readonly ProviderSettings _settings;
         private readonly k8s.Kubernetes _client;
         private static Logging<Provider> logger;
         private CancellationTokenSource _cancellationTokenSource;
@@ -63,65 +18,27 @@ namespace PeakDNS.Kubernetes
         private readonly ConcurrentDictionary<string, string> _clusterTypes = new();
         private readonly ConcurrentDictionary<string, Record> _currentRecords = new();
         private readonly ConcurrentDictionary<string, string> _reservedTopDomains = new();
-        Settings _configSettings;
-
-
+        private readonly Settings _configSettings;
 
         public Provider(Settings configSettings)
         {
             _configSettings = configSettings;
-
-            _settings = new ProviderSettings
-            {
-                Dns = new ProviderSettings.DnsSettings
-                {
-                    Prefix = configSettings.GetSetting("dns", "prefix", "peak."),
-                    UpdateInterval = int.Parse(configSettings.GetSetting("dns", "updateInterval", "30")),
-                    RecordTTL = int.Parse(configSettings.GetSetting("dns", "recordTTL", "300"))
-                },
-                Soa = new ProviderSettings.SoaSettings
-                {
-                    Serial = configSettings.GetSetting("soa", "serial", "2024032601"),
-                    Refresh = int.Parse(configSettings.GetSetting("soa", "refresh", "3600")),
-                    Retry = int.Parse(configSettings.GetSetting("soa", "retry", "1800")),
-                    Expire = int.Parse(configSettings.GetSetting("soa", "expire", "604800")),
-                    TTL = int.Parse(configSettings.GetSetting("soa", "ttl", "3600")),
-                    MinimumTTL = int.Parse(configSettings.GetSetting("soa", "minimumTTL", "300")),
-                    PrimaryNameserver = configSettings.GetSetting("soa", "primaryNameserver", "ns1.peak."),
-                    Hostmaster = configSettings.GetSetting("soa", "hostmaster", "admin.peak.")
-                },
-                LoadBalancing = new ProviderSettings.LoadBalancingSettings
-                {
-                    DefaultOverloadThreshold = double.Parse(configSettings.GetSetting("loadbalancing", "defaultOverloadThreshold", "1.5")),
-                    DefaultMode = configSettings.GetSetting("loadbalancing", "defaultMode", "singlebest")
-                },
-                Hash = new ProviderSettings.HashSettings
-                {
-                    Length = int.Parse(configSettings.GetSetting("hash", "length", "4"))
-                },
-                Logging = new ProviderSettings.LoggingSettings
-                {
-                    Path = configSettings.GetSetting("logging", "path", "./log.txt"),
-                    LogLevel = int.Parse(configSettings.GetSetting("logging", "logLevel", "5"))
-                }
-            };
-
-            bind = new BIND(configSettings, _settings.Dns.Prefix);
+            bind = new BIND(configSettings, _configSettings.GetSetting("dns", "prefix", "peak."));
 
             bind.SetSOARecord(
-                primaryNameserver: _settings.Soa.PrimaryNameserver,
-                hostmaster: _settings.Soa.Hostmaster,
-                serial: _settings.Soa.Serial,
-                refresh: _settings.Soa.Refresh.ToString(),
-                retry: _settings.Soa.Retry.ToString(),
-                expire: _settings.Soa.Expire.ToString(),
-                ttl: _settings.Soa.TTL,
-                minimumTTL: _settings.Soa.MinimumTTL
+                primaryNameserver: _configSettings.GetSetting("soa", "primaryNameserver", "ns1.peak."),
+                hostmaster: _configSettings.GetSetting("soa", "hostmaster", "admin.peak."),
+                serial: _configSettings.GetSetting("soa", "serial", "2024032601"),
+                refresh: _configSettings.GetSetting("soa", "refresh", "3600"),
+                retry: _configSettings.GetSetting("soa", "retry", "1800"),
+                expire: _configSettings.GetSetting("soa", "expire", "604800"),
+                ttl: int.Parse(_configSettings.GetSetting("soa", "ttl", "3600")),
+                minimumTTL: int.Parse(_configSettings.GetSetting("soa", "minimumTTL", "300"))
             );
 
             logger = new Logging<Provider>(
-                _settings.Logging.Path,
-                _settings.Logging.LogLevel
+                _configSettings.GetSetting("logging", "path", "./log.txt"),
+                int.Parse(_configSettings.GetSetting("logging", "logLevel", "5"))
             );
 
             var config = KubernetesClientConfiguration.InClusterConfig();
@@ -211,7 +128,7 @@ namespace PeakDNS.Kubernetes
                 {
                     logger.Error($"Error in update loop: {ex}");
                 }
-                await Task.Delay(TimeSpan.FromSeconds(_settings.Dns.UpdateInterval), cancellationToken);
+                await Task.Delay(TimeSpan.FromSeconds(int.Parse(_configSettings.GetSetting("dns", "updateInterval", "30"))), cancellationToken);
             }
         }
 
@@ -377,18 +294,18 @@ namespace PeakDNS.Kubernetes
                 return;
             }
 
-            var mode = (ns.Metadata.Annotations != null &&
-                        ns.Metadata.Annotations.TryGetValue("dns.peak/loadbalance-mode", out var modeValue))
+            var mode = (ns.Metadata.Labels != null &&
+                        ns.Metadata.Labels.TryGetValue("dns.peak/loadbalance-mode", out var modeValue))
                 ? modeValue.ToLowerInvariant()
-                : _settings.LoadBalancing.DefaultMode;
+                : _configSettings.GetSetting("loadbalancing", "defaultMode", "singlebest");
 
             logger.Info($"Load balancing mode for {domain}: {mode}");
 
             if (mode == "excludeoverloaded")
             {
-                var overloadThresholdStr = ns.Metadata.Annotations?.TryGetValue("dns.peak/overload-threshold", out var thresholdValue) == true
+                var overloadThresholdStr = ns.Metadata.Labels?.TryGetValue("dns.peak/overload-threshold", out var thresholdValue) == true
                     ? thresholdValue
-                    : _settings.LoadBalancing.DefaultOverloadThreshold.ToString();
+                    : _configSettings.GetSetting("loadbalancing", "defaultOverloadThreshold", "1.5");
 
                 var overloadThreshold = double.Parse(overloadThresholdStr);
                 logger.Debug($"Overload threshold for {domain}: {overloadThreshold}");
@@ -407,10 +324,18 @@ namespace PeakDNS.Kubernetes
                 var nonOverloaded = metrics.Where(m => m.metric <= threshold).ToList();
                 logger.Info($"Found {nonOverloaded.Count} non-overloaded pods out of {metrics.Count} total");
 
+                var fqdn = $"{domain}.";
                 foreach (var pod in nonOverloaded)
                 {
-                    await ProcessRecord(newRecords, $"{domain}.", pod.podIP);
-                    logger.Debug($"Added record for pod {pod.podIP} with load {pod.metric:F2}");
+                    var record = Record.CreateARecord(_configSettings, fqdn,
+                        int.Parse(_configSettings.GetSetting("dns", "recordTTL", "300")), pod.podIP);
+
+                    var recordKey = $"{fqdn}_{pod.podIP}";
+                    if (newRecords.TryAdd(recordKey, record))
+                    {
+                        bind.AddRecord(record);
+                        logger.Debug($"Added record for pod {pod.podIP} with load {pod.metric:F2}");
+                    }
                 }
             }
             else
@@ -429,7 +354,6 @@ namespace PeakDNS.Kubernetes
                 }
             }
         }
-
         private bool ValidateClusterType(string domain, string clusterType)
         {
             if (!_clusterTypes.TryGetValue(domain, out string existingType))
@@ -541,7 +465,8 @@ namespace PeakDNS.Kubernetes
 
         private async Task ProcessRecord(ConcurrentDictionary<string, Record> newRecords, string fqdn, string podIP)
         {
-            var record = Record.CreateARecord(_configSettings, fqdn, _settings.Dns.RecordTTL, podIP);
+            var record = Record.CreateARecord(_configSettings, fqdn,
+                int.Parse(_configSettings.GetSetting("dns", "recordTTL", "300")), podIP);
             logger.Debug($"Created A record: {fqdn} -> {podIP}");
 
             if (newRecords.TryAdd(fqdn, record))
@@ -577,7 +502,7 @@ namespace PeakDNS.Kubernetes
                 byte[] inputBytes = Encoding.UTF8.GetBytes(input);
                 byte[] hashBytes = md5.ComputeHash(inputBytes);
                 StringBuilder sb = new StringBuilder();
-                for (int i = 0; i < _settings.Hash.Length; i++)
+                for (int i = 0; i < int.Parse(_configSettings.GetSetting("hash", "length", "4")); i++)
                 {
                     sb.Append(hashBytes[i].ToString("x2"));
                 }
