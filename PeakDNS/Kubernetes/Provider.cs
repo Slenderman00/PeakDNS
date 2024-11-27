@@ -3,12 +3,58 @@ using k8s;
 using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
+using k8s.Models;
 
 namespace PeakDNS.Kubernetes
 {
+    public class ProviderSettings
+    {
+        public DnsSettings Dns { get; set; }
+        public SoaSettings Soa { get; set; }
+        public LoadBalancingSettings LoadBalancing { get; set; }
+        public HashSettings Hash { get; set; }
+        public LoggingSettings Logging { get; set; }
+
+        public class DnsSettings
+        {
+            public string Prefix { get; set; } = "peak.";
+            public int UpdateInterval { get; set; } = 30;
+            public int RecordTTL { get; set; } = 300;
+        }
+
+        public class SoaSettings
+        {
+            public string Serial { get; set; } = "2024032601";
+            public int Refresh { get; set; } = 3600;
+            public int Retry { get; set; } = 1800;
+            public int Expire { get; set; } = 604800;
+            public int TTL { get; set; } = 3600;
+            public int MinimumTTL { get; set; } = 300;
+            public string PrimaryNameserver { get; set; } = "ns1.peak.";
+            public string Hostmaster { get; set; } = "admin.peak.";
+        }
+
+        public class LoadBalancingSettings
+        {
+            public double DefaultOverloadThreshold { get; set; } = 1.5;
+            public string DefaultMode { get; set; } = "singlebest";
+        }
+
+        public class HashSettings
+        {
+            public int Length { get; set; } = 4;
+        }
+
+        public class LoggingSettings
+        {
+            public string Path { get; set; } = "./log.txt";
+            public int LogLevel { get; set; } = 5;
+        }
+    }
+
     public class Provider
     {
-        private readonly Settings settings;
+        private readonly ProviderSettings _settings;
         private readonly k8s.Kubernetes _client;
         private static Logging<Provider> logger;
         private CancellationTokenSource _cancellationTokenSource;
@@ -17,34 +63,73 @@ namespace PeakDNS.Kubernetes
         private readonly ConcurrentDictionary<string, string> _clusterTypes = new();
         private readonly ConcurrentDictionary<string, Record> _currentRecords = new();
         private readonly ConcurrentDictionary<string, string> _reservedTopDomains = new();
+        Settings _configSettings;
 
-        public Provider(Settings settings)
+
+
+        public Provider(Settings configSettings)
         {
-            this.settings = settings;
-            bind = new BIND(settings, "peak.");
+            _configSettings = configSettings;
+
+            _settings = new ProviderSettings
+            {
+                Dns = new ProviderSettings.DnsSettings
+                {
+                    Prefix = configSettings.GetSetting("dns", "prefix", "peak."),
+                    UpdateInterval = int.Parse(configSettings.GetSetting("dns", "updateInterval", "30")),
+                    RecordTTL = int.Parse(configSettings.GetSetting("dns", "recordTTL", "300"))
+                },
+                Soa = new ProviderSettings.SoaSettings
+                {
+                    Serial = configSettings.GetSetting("soa", "serial", "2024032601"),
+                    Refresh = int.Parse(configSettings.GetSetting("soa", "refresh", "3600")),
+                    Retry = int.Parse(configSettings.GetSetting("soa", "retry", "1800")),
+                    Expire = int.Parse(configSettings.GetSetting("soa", "expire", "604800")),
+                    TTL = int.Parse(configSettings.GetSetting("soa", "ttl", "3600")),
+                    MinimumTTL = int.Parse(configSettings.GetSetting("soa", "minimumTTL", "300")),
+                    PrimaryNameserver = configSettings.GetSetting("soa", "primaryNameserver", "ns1.peak."),
+                    Hostmaster = configSettings.GetSetting("soa", "hostmaster", "admin.peak.")
+                },
+                LoadBalancing = new ProviderSettings.LoadBalancingSettings
+                {
+                    DefaultOverloadThreshold = double.Parse(configSettings.GetSetting("loadbalancing", "defaultOverloadThreshold", "1.5")),
+                    DefaultMode = configSettings.GetSetting("loadbalancing", "defaultMode", "singlebest")
+                },
+                Hash = new ProviderSettings.HashSettings
+                {
+                    Length = int.Parse(configSettings.GetSetting("hash", "length", "4"))
+                },
+                Logging = new ProviderSettings.LoggingSettings
+                {
+                    Path = configSettings.GetSetting("logging", "path", "./log.txt"),
+                    LogLevel = int.Parse(configSettings.GetSetting("logging", "logLevel", "5"))
+                }
+            };
+
+            bind = new BIND(configSettings, _settings.Dns.Prefix);
 
             bind.SetSOARecord(
-                primaryNameserver: "ns1.peak.",
-                hostmaster: "admin.peak.",
-                serial: "2024032601",
-                refresh: "3600",
-                retry: "1800",
-                expire: "604800",
-                ttl: 3600,
-                minimumTTL: 300
+                primaryNameserver: _settings.Soa.PrimaryNameserver,
+                hostmaster: _settings.Soa.Hostmaster,
+                serial: _settings.Soa.Serial,
+                refresh: _settings.Soa.Refresh.ToString(),
+                retry: _settings.Soa.Retry.ToString(),
+                expire: _settings.Soa.Expire.ToString(),
+                ttl: _settings.Soa.TTL,
+                minimumTTL: _settings.Soa.MinimumTTL
             );
 
             logger = new Logging<Provider>(
-                settings.GetSetting("logging", "path", "./log.txt"),
-                logLevel: int.Parse(settings.GetSetting("logging", "logLevel", "5"))
+                _settings.Logging.Path,
+                _settings.Logging.LogLevel
             );
-
-            logger.Info("Provider initialized with SOA record");
 
             var config = KubernetesClientConfiguration.InClusterConfig();
             _client = new k8s.Kubernetes(config);
-            _prometheusClient = new PrometheusClient(settings);
+            _prometheusClient = new PrometheusClient(configSettings);
         }
+
+
         private async Task<string> GetLoadBalanceExpression(string labelValue, string namespaceName)
         {
             try
@@ -55,7 +140,6 @@ namespace PeakDNS.Kubernetes
                     return labelValue;
                 }
 
-                // Split the string into exactly 2 parts after removing prefix
                 var parts = labelValue.Substring(PREFIX.Length).Split('.');
                 if (parts.Length != 2)
                 {
@@ -101,12 +185,14 @@ namespace PeakDNS.Kubernetes
                 return string.Empty;
             }
         }
+
         public void Start()
         {
             _prometheusClient.Initialize();
             _cancellationTokenSource = new CancellationTokenSource();
             Task.Run(() => RunUpdateLoop(_cancellationTokenSource.Token));
         }
+
 
         public void Stop()
         {
@@ -125,170 +211,268 @@ namespace PeakDNS.Kubernetes
                 {
                     logger.Error($"Error in update loop: {ex}");
                 }
-                await Task.Delay(TimeSpan.FromSeconds(30), cancellationToken);
+                await Task.Delay(TimeSpan.FromSeconds(_settings.Dns.UpdateInterval), cancellationToken);
             }
         }
+
+
 
         private async Task Update()
         {
             try
             {
                 logger.Debug("Starting DNS record update");
+                await ClearExistingRecords();
+
                 var newRecords = new ConcurrentDictionary<string, Record>();
                 var namespaces = await _client.ListNamespaceAsync();
 
                 foreach (var ns in namespaces.Items)
                 {
-                    logger.Debug($"Processing namespace: {ns.Metadata?.Name}");
-
-                    if (ns.Metadata?.Labels == null)
-                    {
-                        logger.Debug($"Namespace {ns.Metadata?.Name} has no labels, skipping");
-                        continue;
-                    }
-
-                    foreach (var label in ns.Metadata.Labels)
-                    {
-                        logger.Debug($"Namespace {ns.Metadata.Name} label: {label.Key}={label.Value}");
-                    }
-
-                    if (!ns.Metadata.Labels.TryGetValue("dns.peak/domain", out string? domain))
-                    {
-                        logger.Debug($"Namespace {ns.Metadata.Name} has no dns.peak/domain label, skipping");
-                        continue;
-                    }
-
-                    logger.Debug($"Found domain label: {domain} for namespace {ns.Metadata.Name}");
-
-                    bool isTopLevelRequest = false;
-                    if (ns.Metadata.Labels.TryGetValue("dns.peak/only-top", out string? onlyTop))
-                    {
-                        logger.Debug($"Found only-top label: {onlyTop} for namespace {ns.Metadata.Name}");
-                        isTopLevelRequest = bool.TryParse(onlyTop, out bool isOnlyTop) && isOnlyTop;
-                        logger.Debug($"Parsed only-top to: {isTopLevelRequest}");
-                    }
-
-                    if (isTopLevelRequest)
-                    {
-                        logger.Debug($"Processing top-level domain request for {domain}");
-                        if (_reservedTopDomains.TryGetValue(domain, out string? existingNs))
-                        {
-                            if (existingNs != ns.Metadata.Name)
-                            {
-                                logger.Warning($"Namespace {ns.Metadata.Name} attempted to register reserved top domain {domain} (owned by {existingNs})");
-                                continue;
-                            }
-                        }
-                        else
-                        {
-                            _reservedTopDomains.TryAdd(domain, ns.Metadata.Name);
-                            logger.Info($"Reserved top domain {domain} for namespace {ns.Metadata.Name}");
-                        }
-                    }
-                    else if (_reservedTopDomains.ContainsKey(domain))
-                    {
-                        logger.Warning($"Namespace {ns.Metadata.Name} attempted to use reserved top domain {domain}");
-                        continue;
-                    }
-
-                    var pods = await _client.ListNamespacedPodAsync(ns.Metadata.Name);
-                    logger.Debug($"Found {pods.Items.Count} pods in namespace {ns.Metadata.Name}");
-
-                    logger.Debug($"Checking for loadbalance label: {ns.Metadata.Labels.ContainsKey("dns.peak/loadbalance")}");
-                    if (ns.Metadata.Labels.TryGetValue("dns.peak/loadbalance", out string? labelValue))
-                    {
-                        var prometheusQuery = await GetLoadBalanceExpression(labelValue, ns.Metadata.Name);
-                        if (string.IsNullOrEmpty(prometheusQuery))
-                        {
-                            logger.Warning($"Failed to get loadbalance expression for namespace {ns.Metadata.Name}");
-                            continue;
-                        }
-
-                        var clusterType = ns.Metadata.Labels.TryGetValue("cluster-type", out string type) ? type : "default";
-
-                        if (!_clusterTypes.TryGetValue(domain, out string existingType))
-                        {
-                            _clusterTypes.TryAdd(domain, clusterType);
-                        }
-                        else if (existingType != clusterType)
-                        {
-                            logger.Warning($"Skipping load balancing for domain {domain} due to cluster type mismatch. Existing: {existingType}, Current: {clusterType}");
-                            continue;
-                        }
-
-                        var bestMetric = 0.0;
-                        string? bestPodIp = pods.Items[0].Status.PodIP;
-
-                        foreach (var pod in pods.Items)
-                        {
-                            if (pod.Status?.PodIP == null || pod.Metadata?.Name == null)
-                            {
-                                LogPodSkipReason(pod);
-                                continue;
-                            }
-
-                            var query = prometheusQuery
-                                .Replace("%pod-name%", pod.Metadata.Name)
-                                .Replace("%namespace%", ns.Metadata.Name)
-                                .Replace("%cluster-name%", clusterType);
-
-                            try 
-                            {
-                                var metric = await _prometheusClient.GetMetricValueAsync(query);
-                                var metricValue = metric.HasValue ? metric.Value : 0;
-                                
-                                if (metricValue >= bestMetric)
-                                {
-                                    bestMetric = metricValue;
-                                    bestPodIp = pod.Status.PodIP;
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                logger.Warning($"Failed to get metric for pod {pod.Metadata.Name}: {ex.Message}");
-                            }
-                        }
-
-                        if (bestPodIp != null)
-                        {
-                            var fqdn = $"{domain}.";
-                            await ProcessRecord(newRecords, fqdn, bestPodIp);
-                        }
-                        continue;
-                    }
-
-                    foreach (var pod in pods.Items)
-                    {
-                        if (pod.Status == null ||
-                            string.IsNullOrEmpty(pod.Status.PodIP) ||
-                            pod.Metadata == null ||
-                            string.IsNullOrEmpty(pod.Metadata.Name))
-                        {
-                            LogPodSkipReason(pod);
-                            continue;
-                        }
-
-                        try
-                        {
-                            string fqdn = BuildFQDN(domain, pod.Metadata.Name, isTopLevelRequest);
-                            await ProcessRecord(newRecords, fqdn, pod.Status.PodIP);
-                        }
-                        catch (Exception ex)
-                        {
-                            logger.Error($"Error processing pod {pod.Metadata.Name}: {ex}");
-                        }
-                    }
+                    await ProcessNamespace(ns, newRecords);
                 }
 
-                CleanupOldRecords(newRecords);
                 UpdateCurrentRecords(newRecords);
-
                 logger.Debug($"Update completed. Total active records: {_currentRecords.Count}");
             }
             catch (Exception ex)
             {
                 logger.Error($"Error reading Kubernetes data: {ex.Message}");
                 throw;
+            }
+        }
+
+        private async Task ClearExistingRecords()
+        {
+            foreach (var record in _currentRecords)
+            {
+                bind.RemoveRecord(record.Value);
+                logger.Debug($"Removed existing record: {record.Key}");
+            }
+            _currentRecords.Clear();
+        }
+
+        private async Task ProcessNamespace(V1Namespace ns, ConcurrentDictionary<string, Record> newRecords)
+        {
+            if (!ValidateNamespace(ns, out string? domain, out bool isTopLevelRequest))
+                return;
+
+            if (!await HandleTopLevelDomain(ns, domain, isTopLevelRequest))
+                return;
+
+            var pods = await _client.ListNamespacedPodAsync(ns.Metadata.Name);
+
+            if (ns.Metadata.Labels.TryGetValue("dns.peak/loadbalance", out string? labelValue))
+            {
+                await HandleLoadBalancing(ns, pods, domain, labelValue, newRecords);
+            }
+            else
+            {
+                await HandleStandardRecords(pods, domain, isTopLevelRequest, newRecords);
+            }
+        }
+
+        private bool ValidateNamespace(V1Namespace ns, out string? domain, out bool isTopLevelRequest)
+        {
+            domain = null;
+            isTopLevelRequest = false;
+
+            if (ns.Metadata?.Labels == null)
+            {
+                logger.Debug($"Namespace {ns.Metadata?.Name} has no labels, skipping");
+                return false;
+            }
+
+            if (!ns.Metadata.Labels.TryGetValue("dns.peak/domain", out domain))
+            {
+                logger.Debug($"Namespace {ns.Metadata.Name} has no dns.peak/domain label, skipping");
+                return false;
+            }
+
+            if (ns.Metadata.Labels.TryGetValue("dns.peak/only-top", out string? onlyTop))
+            {
+                isTopLevelRequest = bool.TryParse(onlyTop, out bool isOnlyTop) && isOnlyTop;
+            }
+
+            return true;
+        }
+
+        private async Task<bool> HandleTopLevelDomain(V1Namespace ns, string domain, bool isTopLevelRequest)
+        {
+            if (isTopLevelRequest)
+            {
+                if (_reservedTopDomains.TryGetValue(domain, out string? existingNs))
+                {
+                    if (existingNs != ns.Metadata.Name)
+                    {
+                        logger.Warning($"Namespace {ns.Metadata.Name} attempted to register reserved top domain {domain} (owned by {existingNs})");
+                        return false;
+                    }
+                }
+                else
+                {
+                    _reservedTopDomains.TryAdd(domain, ns.Metadata.Name);
+                    logger.Info($"Reserved top domain {domain} for namespace {ns.Metadata.Name}");
+                }
+            }
+            else if (_reservedTopDomains.ContainsKey(domain))
+            {
+                logger.Warning($"Namespace {ns.Metadata.Name} attempted to use reserved top domain {domain}");
+                return false;
+            }
+
+            return true;
+        }
+
+        private async Task<List<(string podIP, double metric)>> GetPodMetrics(V1PodList pods, string prometheusQuery, string namespaceName)
+        {
+            var metrics = new List<(string podIP, double metric)>();
+
+            foreach (var pod in pods.Items)
+            {
+                if (pod.Status?.PodIP == null || pod.Metadata?.Name == null)
+                {
+                    LogPodSkipReason(pod);
+                    continue;
+                }
+
+                var query = prometheusQuery
+                    .Replace("%pod-name%", pod.Metadata.Name)
+                    .Replace("%namespace%", namespaceName);
+
+                try
+                {
+                    var metric = await _prometheusClient.GetMetricValueAsync(query);
+                    if (metric.HasValue)
+                    {
+                        metrics.Add((pod.Status.PodIP, metric.Value));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    logger.Warning($"Failed to get metric for pod {pod.Metadata.Name}: {ex.Message}");
+                }
+            }
+
+            return metrics;
+        }
+
+        private async Task HandleLoadBalancing(V1Namespace ns, V1PodList pods, string domain, string labelValue, ConcurrentDictionary<string, Record> newRecords)
+        {
+            var prometheusQuery = await GetLoadBalanceExpression(labelValue, ns.Metadata.Name);
+            if (string.IsNullOrEmpty(prometheusQuery)) return;
+
+            var clusterType = ns.Metadata.Labels.TryGetValue("cluster-type", out string type) ? type : "default";
+            if (!ValidateClusterType(domain, clusterType)) return;
+
+            var mode = (ns.Metadata.Annotations != null &&
+                       ns.Metadata.Annotations.TryGetValue("dns.peak/loadbalance-mode", out var modeValue))
+                ? modeValue.ToLowerInvariant()
+                : _settings.LoadBalancing.DefaultMode;
+
+            if (mode == "excludeoverloaded")
+            {
+                var overloadThresholdStr = ns.Metadata.Annotations?.TryGetValue("dns.peak/overload-threshold", out var thresholdValue) == true
+                    ? thresholdValue
+                    : _settings.LoadBalancing.DefaultOverloadThreshold.ToString();
+
+                var overloadThreshold = double.Parse(overloadThresholdStr);
+                var metrics = await GetPodMetrics(pods, prometheusQuery, ns.Metadata.Name);
+                if (!metrics.Any()) return;
+
+                var avgLoad = metrics.Average(m => m.metric);
+                var threshold = avgLoad * overloadThreshold;
+
+                foreach (var pod in metrics.Where(m => m.metric <= threshold))
+                {
+                    await ProcessRecord(newRecords, $"{domain}.", pod.podIP);
+                }
+            }
+            else
+            {
+                var bestPodIp = await GetBestPodIp(pods, prometheusQuery, ns.Metadata.Name, clusterType);
+                if (bestPodIp != null)
+                {
+                    await ProcessRecord(newRecords, $"{domain}.", bestPodIp);
+                }
+            }
+        }
+
+        private bool ValidateClusterType(string domain, string clusterType)
+        {
+            if (!_clusterTypes.TryGetValue(domain, out string existingType))
+            {
+                _clusterTypes.TryAdd(domain, clusterType);
+                return true;
+            }
+
+            if (existingType != clusterType)
+            {
+                logger.Warning($"Skipping load balancing for domain {domain} due to cluster type mismatch. Existing: {existingType}, Current: {clusterType}");
+                return false;
+            }
+
+            return true;
+        }
+
+        private async Task<string?> GetBestPodIp(V1PodList pods, string prometheusQuery, string namespaceName, string clusterType)
+        {
+            var bestMetric = 0.0;
+            string? bestPodIp = pods.Items[0].Status.PodIP;
+
+            foreach (var pod in pods.Items)
+            {
+                if (pod.Status?.PodIP == null || pod.Metadata?.Name == null)
+                {
+                    LogPodSkipReason(pod);
+                    continue;
+                }
+
+                var query = prometheusQuery
+                    .Replace("%pod-name%", pod.Metadata.Name)
+                    .Replace("%namespace%", namespaceName)
+                    .Replace("%cluster-name%", clusterType);
+
+                try
+                {
+                    var metric = await _prometheusClient.GetMetricValueAsync(query);
+                    var metricValue = metric.HasValue ? metric.Value : 0;
+
+                    if (metricValue >= bestMetric)
+                    {
+                        bestMetric = metricValue;
+                        bestPodIp = pod.Status.PodIP;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    logger.Warning($"Failed to get metric for pod {pod.Metadata.Name}: {ex.Message}");
+                }
+            }
+
+            return bestPodIp;
+        }
+
+        private async Task HandleStandardRecords(V1PodList pods, string domain, bool isTopLevelRequest, ConcurrentDictionary<string, Record> newRecords)
+        {
+            foreach (var pod in pods.Items)
+            {
+                if (pod.Status == null || string.IsNullOrEmpty(pod.Status.PodIP) ||
+                    pod.Metadata == null || string.IsNullOrEmpty(pod.Metadata.Name))
+                {
+                    LogPodSkipReason(pod);
+                    continue;
+                }
+
+                try
+                {
+                    string fqdn = BuildFQDN(domain, pod.Metadata.Name, isTopLevelRequest);
+                    await ProcessRecord(newRecords, fqdn, pod.Status.PodIP);
+                }
+                catch (Exception ex)
+                {
+                    logger.Error($"Error processing pod {pod.Metadata.Name}: {ex}");
+                }
             }
         }
 
@@ -325,40 +509,13 @@ namespace PeakDNS.Kubernetes
 
         private async Task ProcessRecord(ConcurrentDictionary<string, Record> newRecords, string fqdn, string podIP)
         {
-            var record = Record.CreateARecord(settings, fqdn, 300, podIP);
+            var record = Record.CreateARecord(_configSettings, fqdn, _settings.Dns.RecordTTL, podIP);
             logger.Debug($"Created A record: {fqdn} -> {podIP}");
 
             if (newRecords.TryAdd(fqdn, record))
             {
-                logger.Debug($"Added new record to collection: {fqdn}");
-            }
-
-            if (!_currentRecords.TryGetValue(fqdn, out var existingRecord))
-            {
                 bind.AddRecord(record);
-                logger.Debug($"Added new record to BIND: {fqdn}");
-            }
-            else if (!CompareRecords(existingRecord, record))
-            {
-                bind.RemoveRecord(existingRecord);
-                bind.AddRecord(record);
-                logger.Debug($"Updated existing record in BIND: {fqdn}");
-            }
-            else
-            {
-                logger.Debug($"Record unchanged in BIND: {fqdn}");
-            }
-        }
-
-        private void CleanupOldRecords(ConcurrentDictionary<string, Record> newRecords)
-        {
-            foreach (var oldRecord in _currentRecords)
-            {
-                if (!newRecords.ContainsKey(oldRecord.Key))
-                {
-                    bind.RemoveRecord(oldRecord.Value);
-                    logger.Debug($"Removed old record: {oldRecord.Key}");
-                }
+                logger.Debug($"Added new record: {fqdn}");
             }
         }
 
@@ -388,7 +545,7 @@ namespace PeakDNS.Kubernetes
                 byte[] inputBytes = Encoding.UTF8.GetBytes(input);
                 byte[] hashBytes = md5.ComputeHash(inputBytes);
                 StringBuilder sb = new StringBuilder();
-                for (int i = 0; i < 4; i++)
+                for (int i = 0; i < _settings.Hash.Length; i++)
                 {
                     sb.Append(hashBytes[i].ToString("x2"));
                 }
