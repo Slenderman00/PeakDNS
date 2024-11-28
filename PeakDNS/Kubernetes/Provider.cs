@@ -168,139 +168,297 @@ namespace PeakDNS.Kubernetes
             }
             _currentRecords.Clear();
         }
+        private record DeploymentInfo(V1Deployment Deployment, IDictionary<string, string> Labels);
+        private record EffectiveConfig(string Domain, bool TopLevel, string? LoadBalance);
 
         private async Task ProcessLabels(V1Namespace ns, ConcurrentDictionary<string, Record> newRecords)
         {
             logger.Debug($"Starting ProcessLabels for namespace {ns.Metadata.Name}");
 
-            if (!ValidateNamespace(ns, out string? namespaceDomain, out bool isTopLevelRequest))
+            if (!ValidateAndInitializeNamespace(ns, out string? namespaceDomain, out bool isTopLevelRequest))
             {
-                logger.Debug($"Namespace validation failed for {ns.Metadata.Name}");
                 return;
             }
 
-            if (!await HandleTopLevelDomain(ns, namespaceDomain, isTopLevelRequest))
-            {
-                logger.Debug($"Top level domain handling failed for namespace {ns.Metadata.Name}, domain {namespaceDomain}");
-                return;
-            }
+            var deploymentSelectors = await GetDeploymentSelectors(ns);
+            var allPods = await GetNamespacedPods(ns);
+            var podGroups = GroupPodsByDeployment(allPods, deploymentSelectors);
 
-            logger.Debug($"Fetching deployments for namespace {ns.Metadata.Name}");
-            var deployments = await _client.ListNamespacedDeploymentAsync(ns.Metadata.Name);
-            logger.Debug($"Found {deployments.Items.Count} deployments in namespace {ns.Metadata.Name}");
-
-            bool processedAnyDeployment = false;
-            foreach (var deployment in deployments.Items)
-            {
-                if (deployment.Metadata?.Labels == null)
-                {
-                    logger.Debug($"Skipping deployment {deployment.Metadata?.Name ?? "unknown"} - no metadata or labels");
-                    continue;
-                }
-
-                string? deploymentDomain = null;
-                if (!deployment.Metadata.Labels.TryGetValue("dns.peak/domain", out deploymentDomain))
-                {
-                    logger.Debug($"No dns.peak/domain label found for deployment {deployment.Metadata.Name}, using namespace domain");
-                    deploymentDomain = namespaceDomain;
-                }
-
-                var labelSelector = "";
-                if (deployment.Spec?.Selector?.MatchLabels != null)
-                {
-                    labelSelector = string.Join(",", deployment.Spec.Selector.MatchLabels.Select(x => $"{x.Key}={x.Value}"));
-                    logger.Debug($"Created label selector {labelSelector} for deployment {deployment.Metadata.Name}");
-                }
-
-                logger.Debug($"Fetching pods for deployment {deployment.Metadata.Name} with label selector {labelSelector}");
-                var pods = await _client.ListNamespacedPodAsync(
-                    ns.Metadata.Name,
-                    labelSelector: labelSelector
-                );
-                logger.Debug($"Found {pods.Items.Count} pods for deployment {deployment.Metadata.Name}");
-
-                if (deployment.Metadata.Labels.TryGetValue("dns.peak/loadbalance", out string? labelValue))
-                {
-                    logger.Debug($"Processing load balancing for deployment {deployment.Metadata.Name} with value {labelValue}");
-                    await HandleLoadBalancing(ns, pods, deploymentDomain, labelValue, newRecords);
-                    processedAnyDeployment = true;
-                }
-                else if (ns.Metadata.Labels.TryGetValue("dns.peak/loadbalance", out labelValue))
-                {
-                    logger.Debug($"Processing namespace-level load balancing for deployment {deployment.Metadata.Name} with value {labelValue}");
-                    await HandleLoadBalancing(ns, pods, deploymentDomain, labelValue, newRecords);
-                    processedAnyDeployment = true;
-                }
-                else
-                {
-                    logger.Debug($"Processing standard records for deployment {deployment.Metadata.Name}");
-                    await HandleStandardRecords(pods, deploymentDomain, isTopLevelRequest, newRecords);
-                    processedAnyDeployment = true;
-                }
-            }
-
-            // If no deployments were processed, still check namespace-level labels
-            if (!processedAnyDeployment && ns.Metadata.Labels != null)
-            {
-                logger.Debug($"No valid deployments processed, checking namespace-level labels for {ns.Metadata.Name}");
-                if (ns.Metadata.Labels.TryGetValue("dns.peak/loadbalance", out string? labelValue))
-                {
-                    logger.Debug($"Found namespace-level load balancing configuration with value {labelValue}");
-                    // Get all pods in the namespace since we're working at namespace level
-                    var pods = await _client.ListNamespacedPodAsync(ns.Metadata.Name);
-                    await HandleLoadBalancing(ns, pods, namespaceDomain, labelValue, newRecords);
-                }
-            }
+            await ProcessDeploymentPods(ns, podGroups.DeploymentPods, deploymentSelectors, namespaceDomain, isTopLevelRequest, newRecords);
+            await ProcessStandalonePods(ns, podGroups.StandalonePods, namespaceDomain, isTopLevelRequest, newRecords);
 
             logger.Debug($"Completed ProcessLabels for namespace {ns.Metadata.Name}");
         }
 
-        private bool ValidateNamespace(V1Namespace ns, out string? domain, out bool isTopLevelRequest)
+        private bool ValidateAndInitializeNamespace(V1Namespace ns, out string? namespaceDomain, out bool isTopLevelRequest)
         {
-            domain = null;
-            isTopLevelRequest = false;
-
-            if (ns.Metadata?.Labels == null)
+            if (!ValidateNamespace(ns, out namespaceDomain, out isTopLevelRequest))
             {
-                logger.Debug($"Namespace {ns.Metadata?.Name} has no labels, skipping");
+                logger.Debug($"Namespace validation failed for {ns.Metadata.Name}");
                 return false;
             }
 
-            if (!ns.Metadata.Labels.TryGetValue("dns.peak/domain", out domain))
+            if (!HandleTopLevelDomain(ns, namespaceDomain, isTopLevelRequest).Result)
             {
-                logger.Debug($"Namespace {ns.Metadata.Name} has no dns.peak/domain label, skipping");
+                logger.Debug($"Top level domain handling failed for namespace {ns.Metadata.Name}, domain {namespaceDomain}");
                 return false;
-            }
-
-            if (ns.Metadata.Labels.TryGetValue("dns.peak/only-top", out string? onlyTop))
-            {
-                isTopLevelRequest = bool.TryParse(onlyTop, out bool isOnlyTop) && isOnlyTop;
             }
 
             return true;
         }
 
-        private async Task<bool> HandleTopLevelDomain(V1Namespace ns, string domain, bool isTopLevelRequest)
+        private async Task<Dictionary<string, DeploymentInfo>> GetDeploymentSelectors(V1Namespace ns)
         {
+            var deployments = await _client.ListNamespacedDeploymentAsync(ns.Metadata.Name);
+            return deployments.Items
+                .Where(d => d.Metadata?.Name != null && d.Spec?.Selector?.MatchLabels != null)
+                .ToDictionary(
+                    d => d.Metadata.Name,
+                    d => new DeploymentInfo(d, d.Spec.Selector.MatchLabels)
+                );
+        }
+
+        private async Task<V1PodList> GetNamespacedPods(V1Namespace ns)
+        {
+            logger.Debug($"Fetching all pods for namespace {ns.Metadata.Name}");
+            return await _client.ListNamespacedPodAsync(ns.Metadata.Name);
+        }
+
+        private (Dictionary<string, List<V1Pod>> DeploymentPods, List<V1Pod> StandalonePods) GroupPodsByDeployment(
+            V1PodList pods,
+            Dictionary<string, DeploymentInfo> deploymentSelectors)
+        {
+            var podsByDeployment = new Dictionary<string, List<V1Pod>>();
+            var standalonePods = new List<V1Pod>();
+
+            foreach (var pod in pods.Items)
+            {
+                if (!IsValidPod(pod)) continue;
+
+                var owningDeployment = FindOwningDeployment(pod, deploymentSelectors);
+                if (owningDeployment != null)
+                {
+                    if (!podsByDeployment.ContainsKey(owningDeployment))
+                    {
+                        podsByDeployment[owningDeployment] = new List<V1Pod>();
+                    }
+                    podsByDeployment[owningDeployment].Add(pod);
+                }
+                else
+                {
+                    standalonePods.Add(pod);
+                }
+            }
+
+            return (podsByDeployment, standalonePods);
+        }
+
+        private bool IsValidPod(V1Pod pod)
+        {
+            if (pod.Status?.PodIP == null || pod.Metadata?.Labels == null)
+            {
+                LogPodSkipReason(pod);
+                return false;
+            }
+            return true;
+        }
+
+        private string? FindOwningDeployment(V1Pod pod, Dictionary<string, DeploymentInfo> deploymentSelectors)
+        {
+            return deploymentSelectors
+                .FirstOrDefault(kvp => kvp.Value.Labels.All(label =>
+                    pod.Metadata.Labels.ContainsKey(label.Key) &&
+                    pod.Metadata.Labels[label.Key] == label.Value))
+                .Key;
+        }
+
+        private async Task ProcessDeploymentPods(
+            V1Namespace ns,
+            Dictionary<string, List<V1Pod>> podsByDeployment,
+            Dictionary<string, DeploymentInfo> deploymentSelectors,
+            string namespaceDomain,
+            bool isTopLevelRequest,
+            ConcurrentDictionary<string, Record> newRecords)
+        {
+            var processedPodIPs = new HashSet<string>();
+
+            foreach (var (deploymentName, pods) in podsByDeployment)
+            {
+                var deployment = deploymentSelectors[deploymentName].Deployment;
+
+                foreach (var pod in pods)
+                {
+                    if (pod.Status?.PodIP == null || processedPodIPs.Contains(pod.Status.PodIP))
+                        continue;
+
+                    var config = DetermineEffectiveConfig(pod, deployment, ns, namespaceDomain, isTopLevelRequest);
+                    await ProcessPodWithConfig(ns, pod, config, newRecords);
+                    processedPodIPs.Add(pod.Status.PodIP);
+                }
+            }
+        }
+
+        private async Task ProcessStandalonePods(
+            V1Namespace ns,
+            List<V1Pod> standalonePods,
+            string namespaceDomain,
+            bool isTopLevelRequest,
+            ConcurrentDictionary<string, Record> newRecords)
+        {
+            var processedPodIPs = new HashSet<string>();
+
+            foreach (var pod in standalonePods)
+            {
+                if (pod.Status?.PodIP == null || processedPodIPs.Contains(pod.Status.PodIP))
+                    continue;
+
+                var config = DetermineEffectiveConfig(pod, null, ns, namespaceDomain, isTopLevelRequest);
+                await ProcessPodWithConfig(ns, pod, config, newRecords);
+                processedPodIPs.Add(pod.Status.PodIP);
+            }
+        }
+
+        private EffectiveConfig DetermineEffectiveConfig(V1Pod pod, V1Deployment? deployment, V1Namespace ns, string? namespaceDomain, bool isTopLevelRequest)
+        {
+            // 1. Check pod labels first (highest priority)
+            if (pod.Metadata?.Labels != null && pod.Metadata.Labels.TryGetValue("dns.peak/domain", out var podDomain))
+            {
+                logger.Debug($"Using pod-level DNS configuration for {pod.Metadata.Name}");
+                return new EffectiveConfig(
+                    Domain: podDomain,
+                    TopLevel: pod.Metadata.Labels.TryGetValue("dns.peak/only-top", out var podOnlyTop) &&
+                             bool.TryParse(podOnlyTop, out bool isOnlyTop) && isOnlyTop,
+                    LoadBalance: pod.Metadata.Labels.TryGetValue("dns.peak/loadbalance", out var loadBalance) ? loadBalance : null
+                );
+            }
+
+            // 2. Then deployment labels (medium priority)
+            if (deployment?.Metadata?.Labels != null && deployment.Metadata.Labels.TryGetValue("dns.peak/domain", out var deploymentDomain))
+            {
+                logger.Debug($"Using deployment-level DNS configuration for pod {pod.Metadata?.Name}");
+                return new EffectiveConfig(
+                    Domain: deploymentDomain,
+                    TopLevel: deployment.Metadata.Labels.TryGetValue("dns.peak/only-top", out var depOnlyTop) &&
+                             bool.TryParse(depOnlyTop, out bool isOnlyTop) && isOnlyTop,
+                    LoadBalance: deployment.Metadata.Labels.TryGetValue("dns.peak/loadbalance", out var loadBalance) ? loadBalance : null
+                );
+            }
+
+            // 3. Finally namespace labels (lowest priority)
+            logger.Debug($"Using namespace-level DNS configuration for pod {pod.Metadata?.Name}");
+            return new EffectiveConfig(
+                Domain: namespaceDomain ?? "default.peak",
+                TopLevel: isTopLevelRequest,
+                LoadBalance: ns.Metadata.Labels?.TryGetValue("dns.peak/loadbalance", out var loadBalance) == true ? loadBalance : null
+            );
+        }
+        private async Task ProcessPodWithConfig(
+            V1Namespace ns,
+            V1Pod pod,
+            EffectiveConfig config,
+            ConcurrentDictionary<string, Record> newRecords)
+        {
+            if (config.LoadBalance != null)
+            {
+                var podList = new V1PodList { Items = new List<V1Pod> { pod } };
+                await HandleLoadBalancing(ns, podList, config.Domain, config.LoadBalance, newRecords);
+            }
+            else
+            {
+                string fqdn = BuildFQDN(config.Domain, pod.Metadata.Name, config.TopLevel);
+                await ProcessRecord(newRecords, fqdn, pod.Status.PodIP);
+            }
+        }
+        private bool ValidateNamespace(V1Namespace ns, out string? domain, out bool isTopLevelRequest)
+        {
+            domain = null;
+            isTopLevelRequest = false;
+
+            if (ns.Metadata == null)
+            {
+                logger.Debug($"Namespace has no metadata");
+                return false;
+            }
+
+            logger.Debug($"Checking DNS configuration for namespace {ns.Metadata.Name}");
+
+            bool hasValidConfig = false;
+
+            // First check pod-level DNS labels
+            var pods = _client.ListNamespacedPodAsync(ns.Metadata.Name).Result;
+            foreach (var pod in pods.Items)
+            {
+                if (pod.Metadata?.Labels != null && pod.Metadata.Labels.TryGetValue("dns.peak/domain", out var podDomain))
+                {
+                    logger.Debug($"Found pod {pod.Metadata.Name} with DNS domain {podDomain} in namespace {ns.Metadata.Name}");
+                    hasValidConfig = true;
+                    break;
+                }
+            }
+
+            // Then check deployment-level DNS labels
+            if (!hasValidConfig)
+            {
+                var deployments = _client.ListNamespacedDeploymentAsync(ns.Metadata.Name).Result;
+                foreach (var deployment in deployments.Items)
+                {
+                    if (deployment.Metadata?.Labels != null && deployment.Metadata.Labels.TryGetValue("dns.peak/domain", out var deploymentDomain))
+                    {
+                        logger.Debug($"Found deployment {deployment.Metadata.Name} with DNS domain {deploymentDomain} in namespace {ns.Metadata.Name}");
+                        hasValidConfig = true;
+                        break;
+                    }
+                }
+            }
+
+            // Finally check namespace-level DNS labels
+            if (!hasValidConfig && ns.Metadata.Labels != null && ns.Metadata.Labels.TryGetValue("dns.peak/domain", out domain))
+            {
+                if (ns.Metadata.Labels.TryGetValue("dns.peak/only-top", out string? onlyTop))
+                {
+                    isTopLevelRequest = bool.TryParse(onlyTop, out bool isOnlyTop) && isOnlyTop;
+                }
+                logger.Debug($"Using namespace DNS configuration: domain={domain}, isTopLevelRequest={isTopLevelRequest}");
+                hasValidConfig = true;
+            }
+
+            if (!hasValidConfig)
+            {
+                logger.Debug($"No DNS configuration found at any level in namespace {ns.Metadata.Name}");
+                return false;
+            }
+
+            return true;
+        }
+
+        private async Task<bool> HandleTopLevelDomain(V1Namespace ns, string? namespaceDomain, bool isTopLevelRequest)
+        {
+            // If namespace domain is null, it means we're only processing pod-level DNS configs
+            if (namespaceDomain == null)
+            {
+                logger.Debug($"Namespace {ns.Metadata.Name} has no domain configuration, proceeding with pod-level DNS");
+                return true;
+            }
+
             if (isTopLevelRequest)
             {
-                if (_reservedTopDomains.TryGetValue(domain, out string? existingNs))
+                if (_reservedTopDomains.TryGetValue(namespaceDomain, out string? existingNs))
                 {
                     if (existingNs != ns.Metadata.Name)
                     {
-                        logger.Warning($"Namespace {ns.Metadata.Name} attempted to register reserved top domain {domain} (owned by {existingNs})");
+                        logger.Warning($"Namespace {ns.Metadata.Name} attempted to register reserved top domain {namespaceDomain} (owned by {existingNs})");
                         return false;
                     }
                 }
                 else
                 {
-                    _reservedTopDomains.TryAdd(domain, ns.Metadata.Name);
-                    logger.Info($"Reserved top domain {domain} for namespace {ns.Metadata.Name}");
+                    _reservedTopDomains.TryAdd(namespaceDomain, ns.Metadata.Name);
+                    logger.Info($"Reserved top domain {namespaceDomain} for namespace {ns.Metadata.Name}");
                 }
             }
-            else if (_reservedTopDomains.ContainsKey(domain))
+            else if (_reservedTopDomains.ContainsKey(namespaceDomain))
             {
-                logger.Warning($"Namespace {ns.Metadata.Name} attempted to use reserved top domain {domain}");
+                logger.Warning($"Namespace {ns.Metadata.Name} attempted to use reserved top domain {namespaceDomain}");
                 return false;
             }
 
