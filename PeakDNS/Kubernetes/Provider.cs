@@ -146,7 +146,7 @@ namespace PeakDNS.Kubernetes
 
                 foreach (var ns in namespaces.Items)
                 {
-                    await ProcessNamespace(ns, newRecords);
+                    await ProcessLabels(ns, newRecords);
                 }
 
                 UpdateCurrentRecords(newRecords);
@@ -169,24 +169,90 @@ namespace PeakDNS.Kubernetes
             _currentRecords.Clear();
         }
 
-        private async Task ProcessNamespace(V1Namespace ns, ConcurrentDictionary<string, Record> newRecords)
+        private async Task ProcessLabels(V1Namespace ns, ConcurrentDictionary<string, Record> newRecords)
         {
-            if (!ValidateNamespace(ns, out string? domain, out bool isTopLevelRequest))
-                return;
+            logger.Debug($"Starting ProcessLabels for namespace {ns.Metadata.Name}");
 
-            if (!await HandleTopLevelDomain(ns, domain, isTopLevelRequest))
-                return;
-
-            var pods = await _client.ListNamespacedPodAsync(ns.Metadata.Name);
-
-            if (ns.Metadata.Labels.TryGetValue("dns.peak/loadbalance", out string? labelValue))
+            if (!ValidateNamespace(ns, out string? namespaceDomain, out bool isTopLevelRequest))
             {
-                await HandleLoadBalancing(ns, pods, domain, labelValue, newRecords);
+                logger.Debug($"Namespace validation failed for {ns.Metadata.Name}");
+                return;
             }
-            else
+
+            if (!await HandleTopLevelDomain(ns, namespaceDomain, isTopLevelRequest))
             {
-                await HandleStandardRecords(pods, domain, isTopLevelRequest, newRecords);
+                logger.Debug($"Top level domain handling failed for namespace {ns.Metadata.Name}, domain {namespaceDomain}");
+                return;
             }
+
+            logger.Debug($"Fetching deployments for namespace {ns.Metadata.Name}");
+            var deployments = await _client.ListNamespacedDeploymentAsync(ns.Metadata.Name);
+            logger.Debug($"Found {deployments.Items.Count} deployments in namespace {ns.Metadata.Name}");
+
+            bool processedAnyDeployment = false;
+            foreach (var deployment in deployments.Items)
+            {
+                if (deployment.Metadata?.Labels == null)
+                {
+                    logger.Debug($"Skipping deployment {deployment.Metadata?.Name ?? "unknown"} - no metadata or labels");
+                    continue;
+                }
+
+                string? deploymentDomain = null;
+                if (!deployment.Metadata.Labels.TryGetValue("dns.peak/domain", out deploymentDomain))
+                {
+                    logger.Debug($"No dns.peak/domain label found for deployment {deployment.Metadata.Name}, using namespace domain");
+                    deploymentDomain = namespaceDomain;
+                }
+
+                var labelSelector = "";
+                if (deployment.Spec?.Selector?.MatchLabels != null)
+                {
+                    labelSelector = string.Join(",", deployment.Spec.Selector.MatchLabels.Select(x => $"{x.Key}={x.Value}"));
+                    logger.Debug($"Created label selector {labelSelector} for deployment {deployment.Metadata.Name}");
+                }
+
+                logger.Debug($"Fetching pods for deployment {deployment.Metadata.Name} with label selector {labelSelector}");
+                var pods = await _client.ListNamespacedPodAsync(
+                    ns.Metadata.Name,
+                    labelSelector: labelSelector
+                );
+                logger.Debug($"Found {pods.Items.Count} pods for deployment {deployment.Metadata.Name}");
+
+                if (deployment.Metadata.Labels.TryGetValue("dns.peak/loadbalance", out string? labelValue))
+                {
+                    logger.Debug($"Processing load balancing for deployment {deployment.Metadata.Name} with value {labelValue}");
+                    await HandleLoadBalancing(ns, pods, deploymentDomain, labelValue, newRecords);
+                    processedAnyDeployment = true;
+                }
+                else if (ns.Metadata.Labels.TryGetValue("dns.peak/loadbalance", out labelValue))
+                {
+                    logger.Debug($"Processing namespace-level load balancing for deployment {deployment.Metadata.Name} with value {labelValue}");
+                    await HandleLoadBalancing(ns, pods, deploymentDomain, labelValue, newRecords);
+                    processedAnyDeployment = true;
+                }
+                else
+                {
+                    logger.Debug($"Processing standard records for deployment {deployment.Metadata.Name}");
+                    await HandleStandardRecords(pods, deploymentDomain, isTopLevelRequest, newRecords);
+                    processedAnyDeployment = true;
+                }
+            }
+
+            // If no deployments were processed, still check namespace-level labels
+            if (!processedAnyDeployment && ns.Metadata.Labels != null)
+            {
+                logger.Debug($"No valid deployments processed, checking namespace-level labels for {ns.Metadata.Name}");
+                if (ns.Metadata.Labels.TryGetValue("dns.peak/loadbalance", out string? labelValue))
+                {
+                    logger.Debug($"Found namespace-level load balancing configuration with value {labelValue}");
+                    // Get all pods in the namespace since we're working at namespace level
+                    var pods = await _client.ListNamespacedPodAsync(ns.Metadata.Name);
+                    await HandleLoadBalancing(ns, pods, namespaceDomain, labelValue, newRecords);
+                }
+            }
+
+            logger.Debug($"Completed ProcessLabels for namespace {ns.Metadata.Name}");
         }
 
         private bool ValidateNamespace(V1Namespace ns, out string? domain, out bool isTopLevelRequest)
@@ -273,10 +339,55 @@ namespace PeakDNS.Kubernetes
 
             return metrics;
         }
-
         private async Task HandleLoadBalancing(V1Namespace ns, V1PodList pods, string domain, string labelValue, ConcurrentDictionary<string, Record> newRecords)
         {
             logger.Debug($"Starting load balancing for namespace {ns.Metadata.Name} with domain {domain}");
+
+            // Get the owner (Deployment) labels
+            var deployment = await _client.ListNamespacedDeploymentAsync(ns.Metadata.Name);
+            var ownerDeployment = deployment.Items.FirstOrDefault(d =>
+                d.Spec.Selector.MatchLabels.All(label =>
+                    pods.Items.FirstOrDefault()?.Metadata.Labels.ContainsKey(label.Key) == true &&
+                    pods.Items.FirstOrDefault()?.Metadata.Labels[label.Key] == label.Value));
+
+            string mode;
+            if (ownerDeployment?.Metadata?.Labels != null &&
+                ownerDeployment.Metadata.Labels.TryGetValue("dns.peak/loadbalance-mode", out var deploymentMode))
+            {
+                mode = deploymentMode.ToLowerInvariant();
+                logger.Debug($"Using deployment-level load balancing mode: {mode}");
+            }
+            else if (ns.Metadata.Labels != null &&
+                     ns.Metadata.Labels.TryGetValue("dns.peak/loadbalance-mode", out var namespaceMode))
+            {
+                mode = namespaceMode.ToLowerInvariant();
+                logger.Debug($"Using namespace-level load balancing mode: {mode}");
+            }
+            else
+            {
+                mode = _configSettings.GetSetting("loadbalancing", "defaultMode", "singlebest");
+                logger.Debug($"Using default load balancing mode: {mode}");
+            }
+
+            logger.Info($"Load balancing mode for {domain}: {mode}");
+
+            string overloadThresholdStr;
+            if (ownerDeployment?.Metadata?.Labels != null &&
+                ownerDeployment.Metadata.Labels.TryGetValue("dns.peak/overload-threshold", out var deploymentThreshold))
+            {
+                overloadThresholdStr = deploymentThreshold;
+                logger.Debug($"Using deployment-level overload threshold: {overloadThresholdStr}");
+            }
+            else if (ns.Metadata.Labels?.TryGetValue("dns.peak/overload-threshold", out var namespaceThreshold) == true)
+            {
+                overloadThresholdStr = namespaceThreshold;
+                logger.Debug($"Using namespace-level overload threshold: {overloadThresholdStr}");
+            }
+            else
+            {
+                overloadThresholdStr = _configSettings.GetSetting("loadbalancing", "defaultOverloadThreshold", "1.5");
+                logger.Debug($"Using default overload threshold: {overloadThresholdStr}");
+            }
 
             var prometheusQuery = await GetLoadBalanceExpression(labelValue, ns.Metadata.Name);
             if (string.IsNullOrEmpty(prometheusQuery))
@@ -294,19 +405,8 @@ namespace PeakDNS.Kubernetes
                 return;
             }
 
-            var mode = (ns.Metadata.Labels != null &&
-                        ns.Metadata.Labels.TryGetValue("dns.peak/loadbalance-mode", out var modeValue))
-                ? modeValue.ToLowerInvariant()
-                : _configSettings.GetSetting("loadbalancing", "defaultMode", "singlebest");
-
-            logger.Info($"Load balancing mode for {domain}: {mode}");
-
             if (mode == "excludeoverloaded")
             {
-                var overloadThresholdStr = ns.Metadata.Labels?.TryGetValue("dns.peak/overload-threshold", out var thresholdValue) == true
-                    ? thresholdValue
-                    : _configSettings.GetSetting("loadbalancing", "defaultOverloadThreshold", "1.5");
-
                 var overloadThreshold = double.Parse(overloadThresholdStr);
                 logger.Debug($"Overload threshold for {domain}: {overloadThreshold}");
 
@@ -329,7 +429,6 @@ namespace PeakDNS.Kubernetes
                 {
                     var record = Record.CreateARecord(_configSettings, fqdn,
                         int.Parse(_configSettings.GetSetting("dns", "recordTTL", "300")), pod.podIP);
-
                     var recordKey = $"{fqdn}_{pod.podIP}";
                     if (newRecords.TryAdd(recordKey, record))
                     {
@@ -342,7 +441,6 @@ namespace PeakDNS.Kubernetes
             {
                 logger.Debug($"Using single best pod selection for {domain}");
                 var bestPodIp = await GetBestPodIp(pods, prometheusQuery, ns.Metadata.Name, clusterType);
-
                 if (bestPodIp != null)
                 {
                     await ProcessRecord(newRecords, $"{domain}.", bestPodIp);
