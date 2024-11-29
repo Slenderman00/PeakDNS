@@ -324,11 +324,13 @@ namespace PeakDNS.Kubernetes
             if (pod.Metadata?.Labels != null && pod.Metadata.Labels.TryGetValue("dns.peak/domain", out var podDomain))
             {
                 logger.Debug($"Using pod-level DNS configuration for {pod.Metadata.Name}");
+                string? podLoadBalance = null;
+                pod.Metadata.Labels.TryGetValue("dns.peak/loadbalance", out podLoadBalance);
                 return new EffectiveConfig(
                     Domain: podDomain,
                     TopLevel: pod.Metadata.Labels.TryGetValue("dns.peak/only-top", out var podOnlyTop) &&
-                             bool.TryParse(podOnlyTop, out bool isOnlyTop) && isOnlyTop,
-                    LoadBalance: pod.Metadata.Labels.TryGetValue("dns.peak/loadbalance", out var loadBalance) ? loadBalance : null
+                        bool.TryParse(podOnlyTop, out bool isOnlyTop) && isOnlyTop,
+                    LoadBalance: podLoadBalance
                 );
             }
 
@@ -336,22 +338,27 @@ namespace PeakDNS.Kubernetes
             if (deployment?.Metadata?.Labels != null && deployment.Metadata.Labels.TryGetValue("dns.peak/domain", out var deploymentDomain))
             {
                 logger.Debug($"Using deployment-level DNS configuration for pod {pod.Metadata?.Name}");
+                string? deploymentLoadBalance = null;
+                deployment.Metadata.Labels.TryGetValue("dns.peak/loadbalance", out deploymentLoadBalance);
                 return new EffectiveConfig(
                     Domain: deploymentDomain,
                     TopLevel: deployment.Metadata.Labels.TryGetValue("dns.peak/only-top", out var depOnlyTop) &&
-                             bool.TryParse(depOnlyTop, out bool isOnlyTop) && isOnlyTop,
-                    LoadBalance: deployment.Metadata.Labels.TryGetValue("dns.peak/loadbalance", out var loadBalance) ? loadBalance : null
+                        bool.TryParse(depOnlyTop, out bool isOnlyTop) && isOnlyTop,
+                    LoadBalance: deploymentLoadBalance
                 );
             }
 
             // 3. Finally namespace labels (lowest priority)
             logger.Debug($"Using namespace-level DNS configuration for pod {pod.Metadata?.Name}");
+            string? nsLoadBalance = null;
+            ns.Metadata.Labels?.TryGetValue("dns.peak/loadbalance", out nsLoadBalance);
             return new EffectiveConfig(
                 Domain: namespaceDomain ?? "default.peak",
                 TopLevel: isTopLevelRequest,
-                LoadBalance: ns.Metadata.Labels?.TryGetValue("dns.peak/loadbalance", out var loadBalance) == true ? loadBalance : null
+                LoadBalance: nsLoadBalance
             );
         }
+        
         private async Task ProcessPodWithConfig(
             V1Namespace ns,
             V1Pod pod,
