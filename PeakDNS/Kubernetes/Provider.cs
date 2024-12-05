@@ -358,7 +358,7 @@ namespace PeakDNS.Kubernetes
                 LoadBalance: nsLoadBalance
             );
         }
-        
+
         private async Task ProcessPodWithConfig(
             V1Namespace ns,
             V1Pod pod,
@@ -558,6 +558,7 @@ namespace PeakDNS.Kubernetes
             if (string.IsNullOrEmpty(prometheusQuery))
             {
                 logger.Warning($"Empty Prometheus query for namespace {ns.Metadata.Name}");
+                await CreateRecordsForAllPods(domain, pods, newRecords);
                 return;
             }
 
@@ -570,17 +571,20 @@ namespace PeakDNS.Kubernetes
                 return;
             }
 
+            var metrics = await GetPodMetrics(pods, prometheusQuery, ns.Metadata.Name);
+
+            // If no metrics were retrieved for any pod, create records for all pods
+            if (!metrics.Any())
+            {
+                logger.Warning($"No metrics retrieved for any pod in {domain}, creating records for all pods");
+                await CreateRecordsForAllPods(domain, pods, newRecords);
+                return;
+            }
+
             if (mode == "excludeoverloaded")
             {
                 var overloadThreshold = double.Parse(overloadThresholdStr);
                 logger.Debug($"Overload threshold for {domain}: {overloadThreshold}");
-
-                var metrics = await GetPodMetrics(pods, prometheusQuery, ns.Metadata.Name);
-                if (!metrics.Any())
-                {
-                    logger.Warning($"No metrics retrieved for {domain}");
-                    return;
-                }
 
                 var avgLoad = metrics.Average(m => m.metric);
                 var threshold = avgLoad * overloadThreshold;
@@ -588,6 +592,13 @@ namespace PeakDNS.Kubernetes
 
                 var nonOverloaded = metrics.Where(m => m.metric <= threshold).ToList();
                 logger.Info($"Found {nonOverloaded.Count} non-overloaded pods out of {metrics.Count} total");
+
+                // If all pods are overloaded, use all pods
+                if (!nonOverloaded.Any())
+                {
+                    logger.Warning($"All pods are overloaded for {domain}, using all available pods");
+                    nonOverloaded = metrics.ToList();
+                }
 
                 var fqdn = $"{domain}.";
                 foreach (var pod in nonOverloaded)
@@ -613,7 +624,33 @@ namespace PeakDNS.Kubernetes
                 }
                 else
                 {
-                    logger.Warning($"No suitable pod found for {domain}");
+                    logger.Warning($"No suitable pod found for {domain}, creating records for all pods");
+                    await CreateRecordsForAllPods(domain, pods, newRecords);
+                }
+            }
+        }
+
+        private async Task CreateRecordsForAllPods(string domain, V1PodList pods, ConcurrentDictionary<string, Record> newRecords)
+        {
+            logger.Info($"Creating DNS records for all pods in domain {domain}");
+            var fqdn = $"{domain}.";
+
+            foreach (var pod in pods.Items)
+            {
+                if (pod.Status?.PodIP == null)
+                {
+                    LogPodSkipReason(pod);
+                    continue;
+                }
+
+                var record = Record.CreateARecord(_configSettings, fqdn,
+                    int.Parse(_configSettings.GetSetting("dns", "recordTTL", "300")), pod.Status.PodIP);
+                var recordKey = $"{fqdn}_{pod.Status.PodIP}";
+
+                if (newRecords.TryAdd(recordKey, record))
+                {
+                    bind.AddRecord(record);
+                    logger.Debug($"Added fallback record for pod {pod.Status.PodIP}");
                 }
             }
         }
