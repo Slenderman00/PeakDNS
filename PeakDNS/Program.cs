@@ -58,7 +58,7 @@ namespace PeakDNS
             {
                 logger.Info($"Starting DNS server on {settings.GetSetting("server", "bind", "0.0.0.0")}:{settings.GetSetting("server", "port", "53")}");
 
-                var provider = new Provider(settings);
+                var provider = new DynamicRecords(settings);
                 var recordRequester = new RecordRequester(settings);
                 var cache = new Cache(settings);
 

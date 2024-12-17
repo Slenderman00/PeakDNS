@@ -8,10 +8,10 @@ using k8s.Models;
 namespace PeakDNS.Kubernetes
 {
 
-    public class Provider
+    public class DynamicRecords
     {
         private readonly k8s.Kubernetes _client;
-        private static Logging<Provider> logger;
+        private static Logging<DynamicRecords> logger;
         private CancellationTokenSource _cancellationTokenSource;
         public BIND bind;
         private PrometheusClient _prometheusClient;
@@ -20,7 +20,7 @@ namespace PeakDNS.Kubernetes
         private readonly ConcurrentDictionary<string, string> _reservedTopDomains = new();
         private readonly Settings _configSettings;
 
-        public Provider(Settings configSettings)
+        public DynamicRecords(Settings configSettings)
         {
             _configSettings = configSettings;
             bind = new BIND(configSettings, _configSettings.GetSetting("dns", "prefix", "peak."));
@@ -36,7 +36,7 @@ namespace PeakDNS.Kubernetes
                 minimumTTL: int.Parse(_configSettings.GetSetting("soa", "minimumTTL", "300"))
             );
 
-            logger = new Logging<Provider>(
+            logger = new Logging<DynamicRecords>(
                 _configSettings.GetSetting("logging", "path", "./log.txt"),
                 int.Parse(_configSettings.GetSetting("logging", "logLevel", "5"))
             );
@@ -783,16 +783,6 @@ namespace PeakDNS.Kubernetes
             {
                 _currentRecords.TryAdd(record.Key, record.Value);
             }
-        }
-
-        private bool CompareRecords(Record r1, Record r2)
-        {
-            if (r1.type != r2.type) return false;
-            if (r1.name != r2.name) return false;
-            if (r1.data == null || r2.data == null) return false;
-            if (r1.data.Length != r2.data.Length) return false;
-
-            return r1.data.SequenceEqual(r2.data);
         }
 
         private string GenerateShortHash(string input)
